@@ -1,76 +1,359 @@
-# cliente_ui.py
 import tkinter as tk
 from tkinter import ttk, messagebox
-import requests
+
+import algoritmos
 import costos
 import lector_excel
 
-class VistaCajero(tk.Frame):
-    """Pantalla para que el cajero cotice los envios."""
+try:
+    import requests
+except ModuleNotFoundError:
+    requests = None
+
+
+COLOR_FONDO = "#eef2f7"
+COLOR_TARJETA = "#ffffff"
+COLOR_TEXTO = "#172033"
+COLOR_SECUNDARIO = "#667085"
+COLOR_PRIMARIO = "#2563eb"
+COLOR_PRIMARIO_OSCURO = "#1d4ed8"
+COLOR_EXITO = "#047857"
+COLOR_ALERTA = "#b42318"
+
+
+class VistaCajero(ttk.Frame):
     def __init__(self, parent, municipios):
-        super().__init__(parent, bg="#f4f6f9")
-        
-        # Encabezado corporativo (Logo en texto)
-        self.header = tk.Frame(self, bg="#1a252f", pady=12)
-        self.header.pack(fill="x", pady=(0, 10))
-        tk.Label(self.header, text="🚚 [ GT-EXPRESS S.A. ]", font=("Arial", 16, "bold"), fg="#2ecc71", bg="#1a252f").pack()
-        tk.Label(self.header, text="Modulo de Caja y Cotizaciones", font=("Arial", 10, "italic"), fg="#bdc3c7", bg="#1a252f").pack()
+        super().__init__(parent, padding=20)
+        tk.Label(self, text="Cotizador de Envios", font=("Segoe UI", 18, "bold")).pack(pady=10)
+        tk.Label(self, text=f"Municipios disponibles: {len(municipios)}").pack(pady=10)
 
-        # Formulario de datos
-        self.formulario = tk.LabelFrame(self, text=" Datos del Paquete ", font=("Arial", 10, "bold"), padx=15, pady=10)
-        self.formulario.pack(fill="x", pady=5, padx=15)
 
-        tk.Label(self.formulario, text="Municipio Origen:").pack(anchor="w")
-        self.combo_origen = ttk.Combobox(self.formulario, values=municipios, state="readonly")
-        self.combo_origen.pack(fill="x", pady=5)
+class VistaAdministrador(ttk.Frame):
+    def __init__(self, parent):
+        super().__init__(parent, padding=20)
+        tk.Label(self, text="Panel de Administrador", font=("Segoe UI", 18, "bold")).pack(pady=10)
 
-        tk.Label(self.formulario, text="Municipio Destino:").pack(anchor="w")
-        self.combo_destino = ttk.Combobox(self.formulario, values=municipios, state="readonly")
-        self.combo_destino.pack(fill="x", pady=5)
 
-        tk.Label(self.formulario, text="Peso del Paquete (Libras):").pack(anchor="w")
-        self.entry_peso = ttk.Entry(self.formulario)
-        self.entry_peso.pack(fill="x", pady=5)
+class AplicacionTransporte:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Envios Rapidos GT - Aplicacion de Escritorio")
+        self.root.geometry("840x640")
+        self.root.minsize(760, 560)
+        self.root.configure(bg=COLOR_FONDO)
 
-        # Botones de Accion
-        self.botones = tk.Frame(self)
-        self.botones.pack(fill="x", pady=10, padx=15)
-        tk.Button(self.botones, text="CALCULAR ENVIO", bg="#27ae60", fg="white", font=("Arial", 10, "bold"), command=self.calcular, height=2, width=20).pack(side="left", expand=True, padx=5)
-        tk.Button(self.botones, text="LIMPIAR PANTALLA", bg="#7f8c8d", fg="white", font=("Arial", 10, "bold"), command=self.limpiar, height=2, width=20).pack(side="right", expand=True, padx=5)
+        self.municipios, self.matriz = lector_excel.cargar_datos()
+        self.vista_actual = None
 
-        # Panel de Resultados Exigidos
-        self.resultados = tk.LabelFrame(self, text=" Resumen de Tarifas ", font=("Arial", 10, "bold"), padx=15, pady=10)
-        self.resultados.pack(fill="both", expand=True, pady=5, padx=15)
+        self._configurar_estilos()
+        self._crear_estructura()
+        self.mostrar_cotizador()
 
-        # Distancias en AZUL
-        self.lbl_dijkstra = tk.Label(self.resultados, text="Distancia (Dijkstra): - KM", font=("Arial", 11, "bold"), fg="blue")
-        self.lbl_dijkstra.pack(anchor="w", pady=2)
-        self.lbl_floyd = tk.Label(self.resultados, text="Distancia (Floyd): - KM", font=("Arial", 11, "bold"), fg="blue")
-        self.lbl_floyd.pack(anchor="w", pady=2)
+    def _configurar_estilos(self):
+        self.estilo = ttk.Style()
+        self.estilo.theme_use("clam")
+        self.estilo.configure("TCombobox", padding=8, font=("Segoe UI", 10))
+        self.estilo.configure("TEntry", padding=8, font=("Segoe UI", 10))
 
-        self.lbl_ruta = tk.Label(self.resultados, text="Ruta sugerida: -", wraplength=440, justify="left", font=("Arial", 10))
-        self.lbl_ruta.pack(anchor="w", pady=6)
+    def _crear_estructura(self):
+        self.header = tk.Frame(self.root, bg="#111827", height=88)
+        self.header.pack(fill="x")
+        self.header.pack_propagate(False)
 
-        self.lbl_costo_total = tk.Label(self.resultados, text="Costo Operativo Total: Q0.00", font=("Arial", 10, "bold"))
-        self.lbl_costo_total.pack(anchor="w", pady=2)
-        
-        self.lbl_desglose = tk.Label(self.resultados, text="(Base: Q0.00 | Por Km: Q0.00 | Por Lb: Q0.00)", font=("Arial", 9, "italic"), fg="gray")
-        self.lbl_desglose.pack(anchor="w", pady=1)
+        titulo = tk.Label(
+            self.header,
+            text="Envios Rapidos GT",
+            bg="#111827",
+            fg="#ffffff",
+            font=("Segoe UI", 20, "bold"),
+        )
+        titulo.pack(side="left", padx=28)
 
-        # Precio Final en ROJO
-        self.lbl_precio_final = tk.Label(self.resultados, text="PRECIO TOTAL A PAGAR: Q0.00", font=("Arial", 14, "bold"), fg="red")
-        self.lbl_precio_final.pack(anchor="w", pady=10)
+        subtitulo = tk.Label(
+            self.header,
+            text="Cotizador y panel administrativo",
+            bg="#111827",
+            fg="#cbd5e1",
+            font=("Segoe UI", 10),
+        )
+        subtitulo.pack(side="left", padx=(0, 18))
 
-    def limpiar(self):
-        self.combo_origen.set('')
-        self.combo_destino.set('')
-        self.entry_peso.delete(0, tk.END)
-        self.lbl_dijkstra.config(text="Distancia (Dijkstra): - KM")
-        self.lbl_floyd.config(text="Distancia (Floyd): - KM")
-        self.lbl_ruta.config(text="Ruta sugerida: -")
-        self.lbl_costo_total.config(text="Costo Operativo Total: Q0.00")
-        self.lbl_desglose.config(text="(Base: Q0.00 | Por Km: Q0.00 | Por Lb: Q0.00)")
-        self.lbl_precio_final.config(text="PRECIO TOTAL A PAGAR: Q0.00")
+        self.btn_admin = tk.Button(
+            self.header,
+            text="Administrador",
+            command=self.mostrar_administrador,
+            bg="#374151",
+            fg="#ffffff",
+            activebackground="#4b5563",
+            activeforeground="#ffffff",
+            relief="flat",
+            bd=0,
+            padx=18,
+            pady=10,
+            cursor="hand2",
+            font=("Segoe UI", 10, "bold"),
+        )
+        self.btn_admin.pack(side="right", padx=(8, 28))
+
+        self.btn_cotizador = tk.Button(
+            self.header,
+            text="Cotizador",
+            command=self.mostrar_cotizador,
+            bg=COLOR_PRIMARIO,
+            fg="#ffffff",
+            activebackground=COLOR_PRIMARIO_OSCURO,
+            activeforeground="#ffffff",
+            relief="flat",
+            bd=0,
+            padx=18,
+            pady=10,
+            cursor="hand2",
+            font=("Segoe UI", 10, "bold"),
+        )
+        self.btn_cotizador.pack(side="right", padx=8)
+
+        self.contenido = tk.Frame(self.root, bg=COLOR_FONDO)
+        self.contenido.pack(fill="both", expand=True, padx=24, pady=22)
+
+    def _limpiar_contenido(self):
+        for widget in self.contenido.winfo_children():
+            widget.destroy()
+
+    def _tarjeta(self, parent):
+        frame = tk.Frame(parent, bg=COLOR_TARJETA, highlightbackground="#d0d5dd", highlightthickness=1)
+        return frame
+
+    def _titulo_seccion(self, parent, titulo, descripcion):
+        tk.Label(
+            parent,
+            text=titulo,
+            bg=COLOR_TARJETA,
+            fg=COLOR_TEXTO,
+            font=("Segoe UI", 18, "bold"),
+        ).pack(anchor="w", padx=22, pady=(20, 2))
+        tk.Label(
+            parent,
+            text=descripcion,
+            bg=COLOR_TARJETA,
+            fg=COLOR_SECUNDARIO,
+            font=("Segoe UI", 10),
+        ).pack(anchor="w", padx=22, pady=(0, 16))
+
+    def _etiqueta(self, parent, texto):
+        tk.Label(
+            parent,
+            text=texto,
+            bg=COLOR_TARJETA,
+            fg=COLOR_TEXTO,
+            font=("Segoe UI", 10, "bold"),
+        ).pack(anchor="w", padx=22, pady=(10, 4))
+
+    def _boton_principal(self, parent, texto, comando):
+        return tk.Button(
+            parent,
+            text=texto,
+            command=comando,
+            bg=COLOR_PRIMARIO,
+            fg="#ffffff",
+            activebackground=COLOR_PRIMARIO_OSCURO,
+            activeforeground="#ffffff",
+            relief="flat",
+            bd=0,
+            padx=18,
+            pady=12,
+            cursor="hand2",
+            font=("Segoe UI", 11, "bold"),
+        )
+
+    def mostrar_cotizador(self):
+        self.vista_actual = "cotizador"
+        self._limpiar_contenido()
+        self.btn_cotizador.configure(bg=COLOR_PRIMARIO)
+        self.btn_admin.configure(bg="#374151")
+
+        panel = tk.Frame(self.contenido, bg=COLOR_FONDO)
+        panel.pack(fill="both", expand=True)
+        panel.columnconfigure(0, weight=1)
+        panel.columnconfigure(1, weight=1)
+        panel.rowconfigure(0, weight=1)
+
+        formulario = self._tarjeta(panel)
+        formulario.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
+        resultado = self._tarjeta(panel)
+        resultado.grid(row=0, column=1, sticky="nsew", padx=(10, 0))
+
+        self._titulo_seccion(formulario, "Cotizador", "Ingrese los datos del envio para calcular ruta y precio.")
+
+        self._etiqueta(formulario, "Municipio de origen")
+        self.combo_origen = ttk.Combobox(formulario, values=self.municipios, state="readonly", width=34)
+        self.combo_origen.pack(anchor="w", fill="x", padx=22)
+
+        self._etiqueta(formulario, "Municipio de destino")
+        self.combo_destino = ttk.Combobox(formulario, values=self.municipios, state="readonly", width=34)
+        self.combo_destino.pack(anchor="w", fill="x", padx=22)
+
+        self._etiqueta(formulario, "Peso del paquete en libras")
+        self.entry_peso = ttk.Entry(formulario)
+        self.entry_peso.pack(anchor="w", fill="x", padx=22)
+
+        self._boton_principal(formulario, "Calcular ruta y precio", self.calcular).pack(
+            anchor="w",
+            padx=22,
+            pady=22,
+        )
+
+        self._titulo_seccion(resultado, "Resumen", "Aqui aparecera el resultado del calculo.")
+
+        self.lbl_ruta = tk.Label(
+            resultado,
+            text="Ruta: -",
+            bg=COLOR_TARJETA,
+            fg=COLOR_TEXTO,
+            justify="left",
+            wraplength=320,
+            font=("Segoe UI", 10),
+        )
+        self.lbl_ruta.pack(anchor="w", padx=22, pady=(8, 12))
+
+        self.lbl_km = tk.Label(
+            resultado,
+            text="Distancia: -",
+            bg=COLOR_TARJETA,
+            fg=COLOR_PRIMARIO,
+            font=("Segoe UI", 15, "bold"),
+        )
+        self.lbl_km.pack(anchor="w", padx=22, pady=8)
+
+        self.lbl_costo_total = tk.Label(
+            resultado,
+            text="Costo total empresa: -",
+            bg=COLOR_TARJETA,
+            fg=COLOR_SECUNDARIO,
+            justify="left",
+            font=("Segoe UI", 10),
+        )
+        self.lbl_costo_total.pack(anchor="w", padx=22, pady=8)
+
+        self.lbl_precio_final = tk.Label(
+            resultado,
+            text="Precio a cobrar: -",
+            bg=COLOR_TARJETA,
+            fg=COLOR_ALERTA,
+            justify="left",
+            wraplength=320,
+            font=("Segoe UI", 16, "bold"),
+        )
+        self.lbl_precio_final.pack(anchor="w", padx=22, pady=(16, 8))
+
+    def mostrar_administrador(self):
+        self.vista_actual = "administrador"
+        self._limpiar_contenido()
+        self.btn_admin.configure(bg=COLOR_PRIMARIO)
+        self.btn_cotizador.configure(bg="#374151")
+
+        panel = self._tarjeta(self.contenido)
+        panel.pack(fill="both", expand=True, padx=8, pady=8)
+        self._titulo_seccion(panel, "Administrador", "Herramientas para revisar la informacion del sistema.")
+
+        datos = tk.Frame(panel, bg=COLOR_TARJETA)
+        datos.pack(fill="x", padx=22, pady=8)
+        datos.columnconfigure(0, weight=1)
+        datos.columnconfigure(1, weight=1)
+        datos.columnconfigure(2, weight=1)
+
+        self.lbl_municipios = self._crear_indicador(datos, "Municipios", str(len(self.municipios)), 0)
+        matriz_texto = f"{self.matriz.shape[0]} x {self.matriz.shape[1]}" if self.matriz.size else "Sin datos"
+        self.lbl_matriz = self._crear_indicador(datos, "Matriz", matriz_texto, 1)
+        self.lbl_archivo = self._crear_indicador(datos, "Archivo Excel", "Cargado" if len(self.municipios) else "Pendiente", 2)
+
+        acciones = tk.Frame(panel, bg=COLOR_TARJETA)
+        acciones.pack(fill="x", padx=22, pady=18)
+
+        self._boton_principal(acciones, "Verificar Excel", self.verificar_excel).pack(side="left", padx=(0, 10))
+        self._boton_principal(acciones, "Recargar datos", self.recargar_datos).pack(side="left", padx=10)
+
+        tk.Button(
+            acciones,
+            text="Volver al cotizador",
+            command=self.mostrar_cotizador,
+            bg="#f3f4f6",
+            fg=COLOR_TEXTO,
+            activebackground="#e5e7eb",
+            relief="flat",
+            bd=0,
+            padx=18,
+            pady=12,
+            cursor="hand2",
+            font=("Segoe UI", 11, "bold"),
+        ).pack(side="left", padx=10)
+
+        self.lbl_estado_admin = tk.Label(
+            panel,
+            text="Listo para revisar el archivo distancias.xlsx.",
+            bg=COLOR_TARJETA,
+            fg=COLOR_SECUNDARIO,
+            justify="left",
+            wraplength=720,
+            font=("Segoe UI", 10),
+        )
+        self.lbl_estado_admin.pack(anchor="w", padx=22, pady=(8, 14))
+
+        self.lista_admin = tk.Listbox(
+            panel,
+            height=9,
+            bg="#f8fafc",
+            fg=COLOR_TEXTO,
+            highlightthickness=1,
+            highlightbackground="#d0d5dd",
+            bd=0,
+            font=("Segoe UI", 10),
+        )
+        self.lista_admin.pack(fill="both", expand=True, padx=22, pady=(0, 22))
+        self._llenar_lista_municipios()
+
+    def _crear_indicador(self, parent, titulo, valor, columna):
+        caja = tk.Frame(parent, bg="#f8fafc", highlightbackground="#d0d5dd", highlightthickness=1)
+        caja.grid(row=0, column=columna, sticky="ew", padx=6, ipady=12)
+
+        tk.Label(caja, text=titulo, bg="#f8fafc", fg=COLOR_SECUNDARIO, font=("Segoe UI", 9, "bold")).pack()
+        etiqueta = tk.Label(caja, text=valor, bg="#f8fafc", fg=COLOR_TEXTO, font=("Segoe UI", 15, "bold"))
+        etiqueta.pack()
+        return etiqueta
+
+    def _llenar_lista_municipios(self):
+        self.lista_admin.delete(0, tk.END)
+        if not self.municipios:
+            self.lista_admin.insert(tk.END, "No hay municipios cargados.")
+            return
+
+        for indice, municipio in enumerate(self.municipios[:20], start=1):
+            self.lista_admin.insert(tk.END, f"{indice}. {municipio}")
+
+    def recargar_datos(self):
+        self.municipios, self.matriz = lector_excel.cargar_datos()
+        self.lbl_municipios.config(text=str(len(self.municipios)))
+        matriz_texto = f"{self.matriz.shape[0]} x {self.matriz.shape[1]}" if self.matriz.size else "Sin datos"
+        self.lbl_matriz.config(text=matriz_texto)
+        self.lbl_archivo.config(text="Cargado" if len(self.municipios) else "Pendiente")
+        self._llenar_lista_municipios()
+        self.lbl_estado_admin.config(text="Datos recargados desde distancias.xlsx.")
+
+    def verificar_excel(self):
+        if len(self.municipios) == 0:
+            self.lbl_estado_admin.config(
+                fg=COLOR_ALERTA,
+                text="No se pudieron cargar municipios desde distancias.xlsx.",
+            )
+            return
+
+        self.lbl_estado_admin.config(
+            fg=COLOR_EXITO,
+            text=(
+                "El archivo Excel se leyo correctamente.\n"
+                f"Municipios cargados: {len(self.municipios)}\n"
+                f"Dimension de matriz: {self.matriz.shape}"
+            ),
+        )
 
     def calcular(self):
         origen = self.combo_origen.get()
@@ -78,61 +361,66 @@ class VistaCajero(tk.Frame):
         peso_txt = self.entry_peso.get()
 
         if not origen or not destino or not peso_txt:
-            messagebox.showerror("Campos Vacios", "Por favor llena todos los campos.")
+            messagebox.showerror("Error", "Por favor llena todos los campos.")
             return
+
         try:
             peso = float(peso_txt)
-            if peso <= 0: raise ValueError
         except ValueError:
-            messagebox.showerror("Error de Peso", "El peso debe ser un numero valido mayor a 0.")
+            messagebox.showerror("Error", "El peso debe ser un numero.")
+            return
+
+        if peso <= 0:
+            messagebox.showerror("Error", "El peso debe ser mayor que cero.")
             return
 
         try:
-            url_api = "http://127.0.0"
-            respuesta = requests.post(url_api, json={"origen": origen, "destino": destino})
-            
-            if respuesta.status_code == 200:
-                datos = respuesta.json()
-                km = datos.get("distancia_km", 0.0)
-                ruta_nodos = datos.get("ruta_optima", [])
+            km, ruta = self._calcular_ruta(origen, destino)
+        except Exception as error:
+            messagebox.showerror("Error", f"No se pudo calcular la ruta: {error}")
+            return
 
-                c_base, c_km, c_libra, costo_total, precio_final = costos.calcular_factura(km, peso)
+        if not ruta:
+            messagebox.showerror("Sin ruta", "No existe una ruta disponible entre esos municipios.")
+            return
 
-                self.lbl_ruta.config(text=f"Ruta sugerida: {' ➔ '.join(ruta_nodos)}")
-                self.lbl_dijkstra.config(text=f"Distancia (Dijkstra): {km} KM")
-                self.lbl_floyd.config(text=f"Distancia (Floyd): {km} KM")
-                self.lbl_costo_total.config(text=f"Costo Operativo Total: Q{costo_total:.2f}")
-                self.lbl_desglose.config(text=f"(Base: Q{c_base:.2f} | Por Km: Q{c_km:.2f} | Por Lb: Q{c_libra:.2f})")
-                self.lbl_precio_final.config(text=f"PRECIO TOTAL A PAGAR: Q{precio_final:.2f}")
-            else:
-                messagebox.showerror("Error", "No se encontro una ruta transitable.")
-        except requests.exceptions.ConnectionError:
-            messagebox.showerror("Falla de API", "No hay conexion con el servidor.\nEnciende primero el archivo api_servidor.py.")
+        c_base, c_km, c_libra, costo_total, precio_final = costos.calcular_factura(km, peso)
 
-
-class VistaAdministrador(tk.Frame):
-    """Pantalla gerencial para auditar los costos de la empresa."""
-    def __init__(self, parent):
-        super().__init__(parent, bg="#f4f6f9")
-        
-        self.header = tk.Frame(self, bg="#2c3e50", pady=12)
-        self.header.pack(fill="x", pady=(0, 10))
-        tk.Label(self.header, text=" PANEL DE CONFIGURACION GERENCIAL", font=("Arial", 12, "bold"), fg="white", bg="#2c3e50").pack()
-
-        self.info = tk.LabelFrame(self, text=" Tarifas Vigentes de la Empresa ", font=("Arial", 10, "bold"), padx=15, pady=15)
-        self.info.pack(fill="x", pady=20, padx=15)
-
-        tk.Label(self.info, text=f"• Costo Operativo Base Fijo: Q{costos.costo_base:.2f}", font=("Arial", 10)).pack(anchor="w", pady=6)
-        tk.Label(self.info, text=f"• Tarifa por Kilometro Recorrido: Q{costos.costo_km:.2f}", font=("Arial", 10)).pack(anchor="w", pady=6)
-        tk.Label(self.info, text=f"• Tarifa por Libra de Peso: Q{costos.costo_libra:.2f}", font=("Arial", 10)).pack(anchor="w", pady=6)
-        tk.Label(self.info, text=f"• Porcentaje de Utilidad Comercial: {costos.utilidad * 100:.0f}%", font=("Arial", 10), fg="green").pack(anchor="w", pady=6)
-
-        self.auditoria = tk.LabelFrame(self, text=" Justificacion Tecnica del Grupo ", font=("Arial", 9, "bold"), padx=10, pady=10)
-        self.auditoria.pack(fill="both", expand=True, padx=15, pady=10)
-        
-        explicacion = (
-            "Estas tarifas se estructuraron analizando factores de logistica real en Guatemala:\n\n"
-            "- El costo por kilometro financia el combustible y el desgaste de los camiones.\n"
-            "- La utilidad del 30% cubre el margen de ganancia de la empresa sin violar los rangos del PDF."
+        ruta_texto = " -> ".join(ruta)
+        self.lbl_ruta.config(text=f"Ruta: {ruta_texto}")
+        self.lbl_km.config(text=f"Distancia: {km} kilometros")
+        self.lbl_costo_total.config(
+            text=(
+                f"Costo total empresa: Q{costo_total:.2f}\n"
+                f"Base: Q{c_base:.2f} | Por km: Q{c_km:.2f} | Por lb: Q{c_libra:.2f}"
+            )
         )
-        tk.Label(self.auditoria, text=explicacion, wraplength=400, justify="left", font=("Arial", 9, "italic"), fg="#555").pack()
+        self.lbl_precio_final.config(text=f"Precio a cobrar: Q{precio_final:.2f}")
+
+    def _calcular_ruta(self, origen, destino):
+        datos_api = self._consultar_api(origen, destino)
+        if datos_api is not None:
+            return datos_api["distancia_km"], datos_api["ruta_optima"]
+
+        return algoritmos.calcular_ruta_floyd(self.matriz, self.municipios, origen, destino)
+
+    def _consultar_api(self, origen, destino):
+        if requests is None:
+            return None
+
+        try:
+            respuesta = requests.post(
+                "http://127.0.0.1:5000/calcular_ruta",
+                json={"origen": origen, "destino": destino},
+                timeout=2,
+            )
+            respuesta.raise_for_status()
+            return respuesta.json()
+        except requests.exceptions.RequestException:
+            return None
+
+
+if __name__ == "__main__":
+    ventana = tk.Tk()
+    AplicacionTransporte(ventana)
+    ventana.mainloop()

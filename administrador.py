@@ -11,7 +11,7 @@ class ControlPestanas:
         self.root.title("GT-EXPRESS S.A. - Sistema Integral de Control")
         self.root.geometry("520x660")
         
-        # Cargar municipios reales del Excel
+        # Cargar municipios reales para que los use el cajero desde el Excel
         try:
             municipios, _ = lector_excel.cargar_datos()
         except Exception:
@@ -21,9 +21,9 @@ class ControlPestanas:
         self.notebook = ttk.Notebook(root)
         self.notebook.pack(fill="both", expand=True)
 
-        # Unificar las vistas de cliente_ui.py (Variables sin tildes)
+        # Unificar las vistas de cliente_ui.py
         self.pestana_caja = VistaCajero(self.notebook, municipios)
         self.pestana_admin = VistaAdministrador(self.notebook)
 
-        self.notebook.add(self.pestana_caja, text=" Cotizador de Envios ")
-        self.notebook.add(self.pestana_admin, text=" Panel de Auditoria ")
+        self.notebook.add(self.pestana_caja, text=" 🛒 Cotizador de Envios ")
+        self.notebook.add(self.pestana_admin, text=" ⚙️ Panel de Auditoria ")

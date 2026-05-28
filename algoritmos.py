@@ -63,70 +63,6 @@ def obtener_ruta_minima(recorridos, lista_municipios, origen_idx, destino_idx):
     return ruta
 
 
-def aplicar_dijkstra(matriz_distancias, origen_idx, sin_conexion=SIN_CONEXION):
-    """
-    Calcula el camino mas corto desde un origen hacia todos los municipios.
-
-    Devuelve:
-    1. distancias: kilometros minimos desde el origen.
-    2. anteriores: arreglo para reconstruir la ruta.
-    """
-    matriz = np.array(matriz_distancias, dtype=float, copy=True)
-
-    if matriz.ndim != 2 or matriz.shape[0] != matriz.shape[1]:
-        raise ValueError("La matriz de distancias debe ser cuadrada.")
-
-    n = matriz.shape[0]
-    matriz[matriz == sin_conexion] = np.inf
-    np.fill_diagonal(matriz, 0)
-
-    visitados = np.zeros(n, dtype=bool)
-    distancias = np.full(n, np.inf)
-    anteriores = np.full(n, -1, dtype=int)
-    distancias[origen_idx] = 0
-
-    for _ in range(n):
-        candidatos = np.where(~visitados, distancias, np.inf)
-        actual = int(np.argmin(candidatos))
-
-        if not np.isfinite(distancias[actual]):
-            break
-
-        visitados[actual] = True
-
-        for vecino in range(n):
-            if visitados[vecino] or not np.isfinite(matriz[actual][vecino]):
-                continue
-
-            nueva_distancia = distancias[actual] + matriz[actual][vecino]
-            if nueva_distancia < distancias[vecino]:
-                distancias[vecino] = nueva_distancia
-                anteriores[vecino] = actual
-
-    return distancias, anteriores
-
-
-def obtener_ruta_dijkstra(anteriores, lista_municipios, origen_idx, destino_idx):
-    """Reconstruye la ruta calculada por Dijkstra."""
-    if origen_idx == destino_idx:
-        return [lista_municipios[origen_idx]]
-
-    ruta_indices = []
-    actual = destino_idx
-
-    while actual != -1:
-        ruta_indices.append(actual)
-        if actual == origen_idx:
-            break
-        actual = anteriores[actual]
-
-    if ruta_indices[-1] != origen_idx:
-        return []
-
-    ruta_indices.reverse()
-    return [lista_municipios[indice] for indice in ruta_indices]
-
-
 def _obtener_indice(lista_municipios, municipio):
     """
     Permite buscar un municipio por nombre o usar directamente su indice.
@@ -162,28 +98,6 @@ def calcular_ruta_floyd(matriz_distancias, lista_municipios, origen, destino):
         origen_idx,
         destino_idx,
     )
-
-    if not np.isfinite(total_km):
-        return float("inf"), []
-
-    if float(total_km).is_integer():
-        total_km = int(total_km)
-    else:
-        total_km = float(total_km)
-
-    return total_km, ruta
-
-
-def calcular_ruta_dijkstra(matriz_distancias, lista_municipios, origen, destino):
-    """
-    Calcula la ruta mas corta entre dos municipios usando Dijkstra.
-    """
-    origen_idx = _obtener_indice(lista_municipios, origen)
-    destino_idx = _obtener_indice(lista_municipios, destino)
-
-    distancias, anteriores = aplicar_dijkstra(matriz_distancias, origen_idx)
-    total_km = distancias[destino_idx]
-    ruta = obtener_ruta_dijkstra(anteriores, lista_municipios, origen_idx, destino_idx)
 
     if not np.isfinite(total_km):
         return float("inf"), []
