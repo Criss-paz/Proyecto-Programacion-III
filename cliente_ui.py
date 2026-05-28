@@ -4,6 +4,7 @@ from tkinter import ttk, messagebox
 import algoritmos
 import costos
 import lector_excel
+import visualizador_grafo
 
 try:
     import requests
@@ -38,12 +39,15 @@ class AplicacionTransporte:
     def __init__(self, root):
         self.root = root
         self.root.title("Envios Rapidos GT - Aplicacion de Escritorio")
-        self.root.geometry("840x640")
-        self.root.minsize(760, 560)
+        self.root.geometry("1280x760")
+        self.root.minsize(1080, 680)
         self.root.configure(bg=COLOR_FONDO)
 
         self.municipios, self.matriz = lector_excel.cargar_datos()
         self.vista_actual = None
+        self.ruta_actual = []
+        self.zoom_grafo = 1.0
+        self.desplazamiento_grafo = (0.0, 0.0)
 
         self._configurar_estilos()
         self._crear_estructura()
@@ -52,8 +56,8 @@ class AplicacionTransporte:
     def _configurar_estilos(self):
         self.estilo = ttk.Style()
         self.estilo.theme_use("clam")
-        self.estilo.configure("TCombobox", padding=8, font=("Segoe UI", 10))
-        self.estilo.configure("TEntry", padding=8, font=("Segoe UI", 10))
+        self.estilo.configure("TCombobox", padding=6, font=("Segoe UI", 10))
+        self.estilo.configure("TEntry", padding=6, font=("Segoe UI", 10))
 
     def _crear_estructura(self):
         self.header = tk.Frame(self.root, bg="#111827", height=88)
@@ -165,6 +169,22 @@ class AplicacionTransporte:
             font=("Segoe UI", 11, "bold"),
         )
 
+    def _boton_secundario(self, parent, texto, comando):
+        return tk.Button(
+            parent,
+            text=texto,
+            command=comando,
+            bg="#f3f4f6",
+            fg=COLOR_TEXTO,
+            activebackground="#e5e7eb",
+            relief="flat",
+            bd=0,
+            padx=10,
+            pady=7,
+            cursor="hand2",
+            font=("Segoe UI", 9, "bold"),
+        )
+
     def mostrar_cotizador(self):
         self.vista_actual = "cotizador"
         self._limpiar_contenido()
@@ -173,24 +193,70 @@ class AplicacionTransporte:
 
         panel = tk.Frame(self.contenido, bg=COLOR_FONDO)
         panel.pack(fill="both", expand=True)
-        panel.columnconfigure(0, weight=1)
+        panel.columnconfigure(0, weight=0, minsize=360)
         panel.columnconfigure(1, weight=1)
         panel.rowconfigure(0, weight=1)
 
-        formulario = self._tarjeta(panel)
-        formulario.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
-        resultado = self._tarjeta(panel)
-        resultado.grid(row=0, column=1, sticky="nsew", padx=(10, 0))
+        columna_izquierda = tk.Frame(panel, bg=COLOR_FONDO, width=360)
+        columna_izquierda.grid(row=0, column=0, sticky="nsew", padx=(0, 12))
+        columna_izquierda.grid_propagate(False)
+        columna_izquierda.columnconfigure(0, weight=1)
+        columna_izquierda.rowconfigure(0, weight=1)
 
-        self._titulo_seccion(formulario, "Cotizador", "Ingrese los datos del envio para calcular ruta y precio.")
+        self.canvas_izquierdo = tk.Canvas(
+            columna_izquierda,
+            bg=COLOR_FONDO,
+            highlightthickness=0,
+            bd=0,
+        )
+        scrollbar_izquierdo = ttk.Scrollbar(
+            columna_izquierda,
+            orient="vertical",
+            command=self.canvas_izquierdo.yview,
+        )
+        self.canvas_izquierdo.configure(yscrollcommand=scrollbar_izquierdo.set)
+        self.canvas_izquierdo.grid(row=0, column=0, sticky="nsew")
+        scrollbar_izquierdo.grid(row=0, column=1, sticky="ns")
+
+        panel_izquierdo = tk.Frame(self.canvas_izquierdo, bg=COLOR_FONDO)
+        ventana_scroll = self.canvas_izquierdo.create_window((0, 0), window=panel_izquierdo, anchor="nw")
+
+        def actualizar_scroll(event=None):
+            self.canvas_izquierdo.configure(scrollregion=self.canvas_izquierdo.bbox("all"))
+            self.canvas_izquierdo.itemconfigure(ventana_scroll, width=self.canvas_izquierdo.winfo_width())
+
+        panel_izquierdo.bind("<Configure>", actualizar_scroll)
+        self.canvas_izquierdo.bind("<Configure>", actualizar_scroll)
+        self.canvas_izquierdo.bind_all(
+            "<MouseWheel>",
+            lambda event: self.canvas_izquierdo.yview_scroll(int(-1 * (event.delta / 120)), "units"),
+        )
+        panel_izquierdo.columnconfigure(0, weight=1)
+
+        formulario = self._tarjeta(panel_izquierdo)
+        formulario.configure(height=300)
+        formulario.grid(row=0, column=0, sticky="ew", pady=(0, 12))
+        formulario.grid_propagate(False)
+
+        resultado = self._tarjeta(panel_izquierdo)
+        resultado.configure(height=390)
+        resultado.grid(row=1, column=0, sticky="ew")
+        resultado.grid_propagate(False)
+
+        mapa = self._tarjeta(panel)
+        mapa.grid(row=0, column=1, sticky="nsew", padx=(12, 0))
+
+        self._titulo_seccion(formulario, "Cotizador", "Ingrese los datos del envio.")
 
         self._etiqueta(formulario, "Municipio de origen")
-        self.combo_origen = ttk.Combobox(formulario, values=self.municipios, state="readonly", width=34)
+        self.combo_origen = ttk.Combobox(formulario, values=self.municipios, state="readonly")
         self.combo_origen.pack(anchor="w", fill="x", padx=22)
+        self.combo_origen.bind("<<ComboboxSelected>>", self.actualizar_grafo_por_seleccion)
 
         self._etiqueta(formulario, "Municipio de destino")
-        self.combo_destino = ttk.Combobox(formulario, values=self.municipios, state="readonly", width=34)
+        self.combo_destino = ttk.Combobox(formulario, values=self.municipios, state="readonly")
         self.combo_destino.pack(anchor="w", fill="x", padx=22)
+        self.combo_destino.bind("<<ComboboxSelected>>", self.actualizar_grafo_por_seleccion)
 
         self._etiqueta(formulario, "Peso del paquete en libras")
         self.entry_peso = ttk.Entry(formulario)
@@ -199,10 +265,10 @@ class AplicacionTransporte:
         self._boton_principal(formulario, "Calcular ruta y precio", self.calcular).pack(
             anchor="w",
             padx=22,
-            pady=22,
+            pady=(12, 12),
         )
 
-        self._titulo_seccion(resultado, "Resumen", "Aqui aparecera el resultado del calculo.")
+        self._titulo_seccion(resultado, "Resumen", "Resultado del calculo.")
 
         self.lbl_ruta = tk.Label(
             resultado,
@@ -210,19 +276,19 @@ class AplicacionTransporte:
             bg=COLOR_TARJETA,
             fg=COLOR_TEXTO,
             justify="left",
-            wraplength=320,
+            wraplength=290,
             font=("Segoe UI", 10),
         )
-        self.lbl_ruta.pack(anchor="w", padx=22, pady=(8, 12))
+        self.lbl_ruta.pack(anchor="w", padx=22, pady=(0, 6))
 
         self.lbl_km = tk.Label(
             resultado,
             text="Distancia: -",
             bg=COLOR_TARJETA,
             fg=COLOR_PRIMARIO,
-            font=("Segoe UI", 15, "bold"),
+            font=("Segoe UI", 13, "bold"),
         )
-        self.lbl_km.pack(anchor="w", padx=22, pady=8)
+        self.lbl_km.pack(anchor="w", padx=22, pady=4)
 
         self.lbl_costo_total = tk.Label(
             resultado,
@@ -230,9 +296,10 @@ class AplicacionTransporte:
             bg=COLOR_TARJETA,
             fg=COLOR_SECUNDARIO,
             justify="left",
-            font=("Segoe UI", 10),
+            wraplength=290,
+            font=("Segoe UI", 9),
         )
-        self.lbl_costo_total.pack(anchor="w", padx=22, pady=8)
+        self.lbl_costo_total.pack(anchor="w", padx=22, pady=4)
 
         self.lbl_precio_final = tk.Label(
             resultado,
@@ -240,10 +307,53 @@ class AplicacionTransporte:
             bg=COLOR_TARJETA,
             fg=COLOR_ALERTA,
             justify="left",
-            wraplength=320,
-            font=("Segoe UI", 16, "bold"),
+            wraplength=290,
+            font=("Segoe UI", 14, "bold"),
         )
-        self.lbl_precio_final.pack(anchor="w", padx=22, pady=(16, 8))
+        self.lbl_precio_final.pack(anchor="w", padx=22, pady=(8, 14))
+
+        encabezado_mapa = tk.Frame(mapa, bg=COLOR_TARJETA)
+        encabezado_mapa.pack(fill="x", padx=22, pady=(20, 6))
+        tk.Label(
+            encabezado_mapa,
+            text="Grafo",
+            bg=COLOR_TARJETA,
+            fg=COLOR_TEXTO,
+            font=("Segoe UI", 18, "bold"),
+        ).pack(side="left")
+
+        controles_zoom = tk.Frame(encabezado_mapa, bg=COLOR_TARJETA)
+        controles_zoom.pack(side="right")
+        self._boton_secundario(controles_zoom, "Zoom +", self.acercar_grafo).pack(side="left", padx=4)
+        self._boton_secundario(controles_zoom, "Zoom -", self.alejar_grafo).pack(side="left", padx=4)
+        self._boton_secundario(controles_zoom, "Reiniciar", self.reiniciar_zoom_grafo).pack(side="left", padx=4)
+        self._boton_secundario(controles_zoom, "<", lambda: self.mover_grafo(-1, 0)).pack(side="left", padx=(12, 2))
+        self._boton_secundario(controles_zoom, ">", lambda: self.mover_grafo(1, 0)).pack(side="left", padx=2)
+        self._boton_secundario(controles_zoom, "^", lambda: self.mover_grafo(0, 1)).pack(side="left", padx=2)
+        self._boton_secundario(controles_zoom, "v", lambda: self.mover_grafo(0, -1)).pack(side="left", padx=2)
+
+        tk.Label(
+            mapa,
+            text="Ruta resaltada con municipios y kilometros.",
+            bg=COLOR_TARJETA,
+            fg=COLOR_SECUNDARIO,
+            font=("Segoe UI", 10),
+        ).pack(anchor="w", padx=22, pady=(0, 12))
+
+        self.panel_mapa = tk.Frame(mapa, bg=COLOR_TARJETA)
+        self.panel_mapa.pack(fill="both", expand=True, padx=18, pady=(0, 18))
+
+        self.lbl_estado_mapa = tk.Label(
+            self.panel_mapa,
+            text="Cargando grafo completo...",
+            bg=COLOR_TARJETA,
+            fg=COLOR_SECUNDARIO,
+            justify="left",
+            wraplength=720,
+            font=("Segoe UI", 10),
+        )
+        self.lbl_estado_mapa.pack(anchor="w", pady=10)
+        self.root.after(100, self.mostrar_grafo_inicial)
 
     def mostrar_administrador(self):
         self.vista_actual = "administrador"
@@ -396,6 +506,10 @@ class AplicacionTransporte:
             )
         )
         self.lbl_precio_final.config(text=f"Precio a cobrar: Q{precio_final:.2f}")
+        self.ruta_actual = ruta
+        self.root.update_idletasks()
+        self.canvas_izquierdo.yview_moveto(1.0)
+        self._mostrar_mapa(ruta)
 
     def _calcular_ruta(self, origen, destino):
         datos_api = self._consultar_api(origen, destino)
@@ -418,6 +532,139 @@ class AplicacionTransporte:
             return respuesta.json()
         except requests.exceptions.RequestException:
             return None
+
+    def _mostrar_mapa(self, ruta):
+        try:
+            self.canvas_grafo = visualizador_grafo.mostrar_grafo_en_tk(
+                self.panel_mapa,
+                self.matriz,
+                self.municipios,
+                ruta,
+                self.zoom_grafo,
+                self.desplazamiento_grafo,
+            )
+            self._activar_arrastre_grafo()
+        except ModuleNotFoundError as error:
+            for widget in self.panel_mapa.winfo_children():
+                widget.destroy()
+            tk.Label(
+                self.panel_mapa,
+                text=str(error),
+                bg=COLOR_TARJETA,
+                fg=COLOR_ALERTA,
+                justify="left",
+                wraplength=320,
+                font=("Segoe UI", 10, "bold"),
+            ).pack(anchor="w", pady=10)
+        except Exception as error:
+            for widget in self.panel_mapa.winfo_children():
+                widget.destroy()
+            tk.Label(
+                self.panel_mapa,
+                text=f"No se pudo dibujar el mapa: {error}",
+                bg=COLOR_TARJETA,
+                fg=COLOR_ALERTA,
+                justify="left",
+                wraplength=320,
+                font=("Segoe UI", 10, "bold"),
+            ).pack(anchor="w", pady=10)
+
+    def mostrar_grafo_inicial(self):
+        if self.vista_actual == "cotizador":
+            self.ruta_actual = []
+            self._mostrar_mapa([])
+
+    def actualizar_grafo_por_seleccion(self, event=None):
+        origen = self.combo_origen.get()
+        destino = self.combo_destino.get()
+
+        if not origen and not destino:
+            self.ruta_actual = []
+            self._mostrar_mapa([])
+            return
+
+        if origen and not destino:
+            self.ruta_actual = [origen]
+            self._mostrar_mapa([origen])
+            return
+
+        if destino and not origen:
+            self.ruta_actual = [destino]
+            self._mostrar_mapa([destino])
+            return
+
+        try:
+            if origen == destino:
+                ruta = [origen]
+            else:
+                _, ruta = algoritmos.calcular_ruta_floyd(self.matriz, self.municipios, origen, destino)
+        except Exception:
+            ruta = [origen, destino]
+
+        self.ruta_actual = ruta
+        self._mostrar_mapa(ruta)
+
+    def acercar_grafo(self):
+        self.zoom_grafo = min(self.zoom_grafo * 1.25, 4.0)
+        self._redibujar_grafo_actual()
+
+    def alejar_grafo(self):
+        self.zoom_grafo = max(self.zoom_grafo / 1.25, 0.5)
+        self._redibujar_grafo_actual()
+
+    def reiniciar_zoom_grafo(self):
+        self.zoom_grafo = 1.0
+        self.desplazamiento_grafo = (0.0, 0.0)
+        self._redibujar_grafo_actual()
+
+    def mover_grafo(self, direccion_x, direccion_y):
+        paso = 0.25 / max(self.zoom_grafo, 1.0)
+        actual_x, actual_y = self.desplazamiento_grafo
+        self.desplazamiento_grafo = (
+            actual_x + direccion_x * paso,
+            actual_y + direccion_y * paso,
+        )
+        self._redibujar_grafo_actual()
+
+    def _redibujar_grafo_actual(self):
+        self._mostrar_mapa(self.ruta_actual)
+
+    def _activar_arrastre_grafo(self):
+        estado_arrastre = {"inicio": None}
+
+        def iniciar(event):
+            if event.inaxes is None or event.xdata is None or event.ydata is None:
+                return
+            estado_arrastre["inicio"] = (
+                event.xdata,
+                event.ydata,
+                event.inaxes.get_xlim(),
+                event.inaxes.get_ylim(),
+            )
+
+        def arrastrar(event):
+            if estado_arrastre["inicio"] is None:
+                return
+            if event.inaxes is None or event.xdata is None or event.ydata is None:
+                return
+
+            inicio_x, inicio_y, limite_x, limite_y = estado_arrastre["inicio"]
+            mover_x = inicio_x - event.xdata
+            mover_y = inicio_y - event.ydata
+            event.inaxes.set_xlim(limite_x[0] + mover_x, limite_x[1] + mover_x)
+            event.inaxes.set_ylim(limite_y[0] + mover_y, limite_y[1] + mover_y)
+
+            centro_x = sum(event.inaxes.get_xlim()) / 2
+            centro_y = sum(event.inaxes.get_ylim()) / 2
+            self.desplazamiento_grafo = (centro_x, centro_y)
+            self.canvas_grafo.draw_idle()
+
+        def soltar(event):
+            estado_arrastre["inicio"] = None
+
+        self.canvas_grafo.mpl_connect("button_press_event", iniciar)
+        self.canvas_grafo.mpl_connect("motion_notify_event", arrastrar)
+        self.canvas_grafo.mpl_connect("button_release_event", soltar)
 
 
 if __name__ == "__main__":
