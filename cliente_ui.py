@@ -267,6 +267,11 @@ class AplicacionTransporte:
             padx=22,
             pady=(12, 12),
         )
+        self._boton_secundario(formulario, "Reiniciar cotizacion", self.reiniciar_cotizacion).pack(
+            anchor="w",
+            padx=22,
+            pady=(0, 10),
+        )
 
         self._titulo_seccion(resultado, "Resumen", "Resultado del calculo.")
 
@@ -603,6 +608,22 @@ class AplicacionTransporte:
 
         self.ruta_actual = ruta
         self._mostrar_mapa(ruta)
+
+    def reiniciar_cotizacion(self):
+        self.combo_origen.set("")
+        self.combo_destino.set("")
+        self.entry_peso.delete(0, tk.END)
+
+        self.lbl_ruta.config(text="Ruta: -")
+        self.lbl_km.config(text="Distancia: -")
+        self.lbl_costo_total.config(text="Costo total empresa: -")
+        self.lbl_precio_final.config(text="Precio a cobrar: -")
+
+        self.ruta_actual = []
+        self.zoom_grafo = 1.0
+        self.desplazamiento_grafo = (0.0, 0.0)
+        self.canvas_izquierdo.yview_moveto(0.0)
+        self._mostrar_mapa([])
 
     def acercar_grafo(self):
         self.zoom_grafo = min(self.zoom_grafo * 1.25, 4.0)

@@ -8,7 +8,9 @@ import numpy as np
 
 
 SIN_CONEXION = 999
-RUTA_DRAWIO = Path.home() / "OneDrive" / "Desktop" / "Prograterminado (1)(10).drawio"
+RUTA_DRAWIO_REPOSITORIO = Path(__file__).with_name("grafo.drawio")
+RUTA_DRAWIO_DESKTOP = Path.home() / "OneDrive" / "Desktop" / "Prograterminado (1)(10).drawio"
+RUTA_DRAWIO = RUTA_DRAWIO_REPOSITORIO if RUTA_DRAWIO_REPOSITORIO.exists() else RUTA_DRAWIO_DESKTOP
 ALIAS_DRAWIO = {
     "CIUDAD DE GUATEMALA": "GUATEMALA",
     "SACATEPEQUEZ ANTIGUA GUATEMALA": "LA ANTIGUA GUATEMALA",
