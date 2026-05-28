@@ -1,0 +1,21 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Principal - Interfaz",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/principal.py",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "API - Servidor",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/api_servidor.py",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}
