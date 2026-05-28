@@ -2,7 +2,7 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Principal - Interfaz",
+      "name": "1. Cliente (principal.py)",
       "type": "python",
       "request": "launch",
       "program": "${workspaceFolder}/principal.py",
@@ -10,10 +10,10 @@
       "cwd": "${workspaceFolder}"
     },
     {
-      "name": "API - Servidor",
+      "name": "2. API (api.py)",
       "type": "python",
       "request": "launch",
-      "program": "${workspaceFolder}/api_servidor.py",
+      "program": "${workspaceFolder}/api.py",
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}"
     }

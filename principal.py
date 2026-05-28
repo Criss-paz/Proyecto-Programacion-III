@@ -1,18 +1,14 @@
-# principal.py
-import tkinter as tk
-from cliente_ui import AplicacionTransporte
+"""
+Punto de entrada del CLIENTE.
+Ejecutar: python principal.py
+"""
 
-def iniciar_programa():
-    print("[Sistema] Iniciando aplicacion de escritorio...")
-    
-    # Levantar ventana raiz de Tkinter
-    root = tk.Tk()
-    
-    # Cargar la aplicacion principal
-    AplicacionTransporte(root)
-    
-    # Mantener el programa abierto
-    root.mainloop()
+import tkinter as tk
+from nucleo import config_tarifas
+from cliente.aplicacion import AplicacionTransporte
 
 if __name__ == "__main__":
-    iniciar_programa()
+    config_tarifas.obtener()
+    root = tk.Tk()
+    AplicacionTransporte(root)
+    root.mainloop()
