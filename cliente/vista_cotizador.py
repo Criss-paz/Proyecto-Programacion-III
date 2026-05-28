@@ -98,6 +98,9 @@ class VistaCotizador:
 
         c_base, c_km, c_libra, costo_total, precio_final = config_tarifas.calcular_factura(km, peso)
         margen = config_tarifas.obtener()["MARGEN_UTILIDAD"]
+        nota_local = ""
+        if origen == destino:
+            nota_local = "\nServicio local: no hay recorrido entre municipios, solo se cobra base y peso."
         self.lbl_ruta.config(text=" → ".join(ruta))
         self.lbl_km.config(text=f"{km} km")
         self.lbl_costo_total.config(text=(
@@ -107,6 +110,7 @@ class VistaCotizador:
             f"────────────────────────────\n"
             f"  Q {costo_total:.2f} (Subtotal Costo Operativo)\n"
             f"+ Q {costo_total * margen:.2f} (Utilidad {margen * 100:.0f}%)"
+            f"{nota_local}"
         ))
         self.lbl_precio_final.config(text=f"Q {precio_final:.2f}")
         self.ruta_actual = ruta

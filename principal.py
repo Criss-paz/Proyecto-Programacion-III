@@ -15,7 +15,7 @@ from urllib.request import urlopen
 from cliente.aplicacion import AplicacionTransporte
 from nucleo import config_tarifas
 
-API_STATUS_URL = "http://localhost:5000/status"
+API_STATUS_URL = "http://127.0.0.1:5000/status"
 API_START_TIMEOUT = 8
 api_proceso = None
 
@@ -24,7 +24,7 @@ def api_esta_activa():
     try:
         with urlopen(API_STATUS_URL, timeout=0.8) as respuesta:
             return respuesta.status == 200
-    except (OSError, URLError):
+    except (OSError, TimeoutError, URLError):
         return False
 
 

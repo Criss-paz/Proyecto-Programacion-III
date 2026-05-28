@@ -7,7 +7,7 @@ COLOR_FONDO, COLOR_PANEL, COLOR_BORDE = "#f8fafc", "#ffffff", "#e2e8f0"
 COLOR_TEXTO, COLOR_SUAVE = "#0f172a", "#64748b"
 COLOR_PRIMARIO, COLOR_PRIMARIO_HOVER = "#2563eb", "#1d4ed8"
 COLOR_ERROR, COLOR_EXITO = "#ef4444", "#22c55e"
-API_URL = "http://localhost:5000"
+API_URL = "http://127.0.0.1:5000"
 FUENTE = "Segoe UI"
 
 
