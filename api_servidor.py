@@ -1,53 +1,59 @@
-from flask import Flask, request, jsonify
+from flask import Flask, jsonify, request
 
-# NOTA PARA EL GRUPO: 
-# Cuando el Integrante 2 termine sus algoritmos y el Excel esté listo, 
-# descomentarán estas líneas para conectar los archivos:
-# import lector_excel
-# import algoritmos
+import algoritmos
+import lector_excel
 
-# 1. Inicializamos la aplicación de Flask (El Servidor)
+
 app = Flask(__name__)
 
-# 2. Creamos la "Ruta" o "Endpoint" que el Cliente (Tkinter) va a consultar
-@app.route('/calcular_ruta', methods=['POST'])
-def calcular_ruta():
-    
-    # A. Recibimos el paquete de datos (JSON) que nos manda Tkinter
-    datos = request.get_json()
-    origen = datos.get('origen')
-    destino = datos.get('destino')
+MUNICIPIOS, MATRIZ_DISTANCIAS = lector_excel.cargar_datos()
 
-    # B. Validación de seguridad básica
+
+@app.route("/calcular_ruta", methods=["POST"])
+def calcular_ruta():
+    datos = request.get_json() or {}
+    origen = datos.get("origen")
+    destino = datos.get("destino")
+
     if not origen or not destino:
         return jsonify({"error": "Faltan datos de origen o destino"}), 400
 
-    print(f"Recibí una petición para calcular desde {origen} hacia {destino}")
+    if origen == destino:
+        return jsonify({"error": "El origen y el destino no pueden ser el mismo municipio"}), 400
 
-    # C. --- ZONA DE CONEXIÓN (El trabajo pesado) ---
-    # Aquí es donde llamarán a las funciones de sus compañeros.
-    # Se vería algo así:
-    # matriz_distancias = lector_excel.obtener_matriz()
-    # kilometros, lista_nodos = algoritmos.dijkstra(matriz_distancias, origen, destino)
-    
-    # -> SIMULACIÓN (Mientras sus compañeros terminan el algoritmo) <-
-    kilometros = 40.5
-    lista_nodos = [origen, "Mixco", "San Lucas", destino]
-    # ---------------------------------------------------------------
+    if len(MUNICIPIOS) == 0:
+        return jsonify({"error": "No se cargaron datos desde el Excel"}), 500
 
-    # D. Empaquetamos la respuesta para enviársela de vuelta a Tkinter
+    try:
+        km_dijkstra, ruta_dijkstra = algoritmos.calcular_ruta_dijkstra(
+            MATRIZ_DISTANCIAS,
+            MUNICIPIOS,
+            origen,
+            destino,
+        )
+        km_floyd, ruta_floyd = algoritmos.calcular_ruta_floyd(
+            MATRIZ_DISTANCIAS,
+            MUNICIPIOS,
+            origen,
+            destino,
+        )
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 400
+
     respuesta = {
-        "distancia_km": kilometros,
-        "ruta_optima": lista_nodos,
-        "mensaje": "¡Ruta calculada con éxito desde el Servidor!"
+        "distancia_km": km_dijkstra,
+        "ruta_optima": ruta_dijkstra,
+        "distancia_dijkstra": km_dijkstra,
+        "ruta_dijkstra": ruta_dijkstra,
+        "distancia_floyd": km_floyd,
+        "ruta_floyd": ruta_floyd,
+        "mensaje": "Ruta calculada con datos reales desde la API",
     }
 
     return jsonify(respuesta), 200
 
-# 3. Arrancamos el servidor
-if __name__ == '__main__':
-    print("Iniciando la API de la Empresa de Transporte...")
-    # debug=True hace que el servidor se reinicie solo si le hacen cambios al código
-    app.run(debug=True, port=5000)
 
-    
+if __name__ == "__main__":
+    print("Iniciando API de Envios Rapidos GT...")
+    print(f"Municipios cargados: {len(MUNICIPIOS)}")
+    app.run(debug=True, port=5000)

@@ -1,16 +1,35 @@
+"""
+Formulas de cobro para el Integrante 3.
+
+Los valores no son aleatorios:
+- Costo base: gastos fijos de operacion por cada paquete.
+- Costo por km: combustible, mantenimiento y depreciacion del vehiculo.
+- Costo por libra: manipulacion y esfuerzo de carga del paquete.
+- Utilidad: ganancia del 30% para la empresa.
+"""
+
+COSTO_BASE = 15.00
+COSTO_KM = 3.50
+COSTO_LIBRA = 1.25
+UTILIDAD = 0.30
+
+
 def calcular_factura(kilometros, peso_libras):
     """
-    Recibe los kilómetros de la ruta y el peso del paquete.
-    Aplica las fórmulas del proyecto y devuelve todos los valores.
+    Recibe los kilometros de la ruta y el peso del paquete.
+    Aplica las formulas del proyecto y devuelve todos los valores.
     """
-    # 1. Definición de precios de la empresa (Pueden cambiar estos valores si gustan)
-    costo_base = 15.00      # Gastos fijos (papelería, luz, etc.)
-    costo_km = 3.50         # Q3.50 por km (Cubre gasolina y depreciación del vehículo)
-    costo_libra = 1.25      # Q1.25 por cada libra de peso
-    utilidad = 0.30         # 30% de ganancia para la empresa (0.30)
+    costo_total = COSTO_BASE + (COSTO_KM * kilometros) + (COSTO_LIBRA * peso_libras)
+    precio_final = costo_total + (costo_total * UTILIDAD)
 
-    # 2. Fórmulas exactas solicitadas en el PDF
-    costo_total = costo_base + (costo_km * kilometros) + (costo_libra * peso_libras)
-    precio_final = costo_total + (costo_total * utilidad)
+    return COSTO_BASE, COSTO_KM, COSTO_LIBRA, costo_total, precio_final
 
-    return costo_base, costo_km, costo_libra, costo_total, precio_final
+
+def obtener_detalle_costos():
+    """Devuelve los parametros para mostrarlos o explicarlos en pantalla."""
+    return {
+        "costo_base": COSTO_BASE,
+        "costo_km": COSTO_KM,
+        "costo_libra": COSTO_LIBRA,
+        "utilidad": UTILIDAD,
+    }
