@@ -68,7 +68,8 @@ def _posiciones_desde_drawio(municipios):
 
     return posiciones
 
-def dibujar_mapa(municipios, matriz, ruta_optima):
+def dibujar_mapa(municipios, matriz, ruta_optima=None, ax=None):
+    ruta_optima = ruta_optima or []
     G = nx.Graph()
     G.add_nodes_from(municipios)
     
@@ -93,8 +94,13 @@ def dibujar_mapa(municipios, matriz, ruta_optima):
     color_nodos = ["#dc2626" if nodo in ruta_optima else "#94a3b8" for nodo in G.nodes()]
     tamano_nodos = [500 if nodo in ruta_optima else 50 for nodo in G.nodes()]
 
-    plt.figure(figsize=(16, 9))
-    plt.title("Mapa de Rutas - Envíos Rápidos GT (Cerrar para continuar)", fontsize=16, fontweight="bold", pad=15)
+    mostrar_ventana = ax is None
+    if mostrar_ventana:
+        _, ax = plt.subplots(figsize=(16, 9))
+    else:
+        ax.clear()
+
+    ax.set_title("Mapa de Rutas - Envios Rapidos GT", fontsize=13, fontweight="bold", pad=10)
     
     posiciones = _posiciones_desde_drawio(municipios)
     if len(posiciones) < len(municipios):
@@ -111,24 +117,29 @@ def dibujar_mapa(municipios, matriz, ruta_optima):
             posiciones_extra = nx.spring_layout(G.subgraph(faltantes), k=8.0, weight=None, seed=42, iterations=500)
             posiciones.update(posiciones_extra)
     
-    nx.draw_networkx_nodes(G, posiciones, node_color=color_nodos, node_size=tamano_nodos, edgecolors="#0f172a", linewidths=1.5)
-    nx.draw_networkx_edges(G, posiciones, edgelist=aristas_base, edge_color="#cbd5e1", width=1.0)
-    nx.draw_networkx_edges(G, posiciones, edgelist=aristas_destacadas, edge_color="#dc2626", width=4.5)
+    nx.draw_networkx_nodes(G, posiciones, ax=ax, node_color=color_nodos, node_size=tamano_nodos, edgecolors="#0f172a", linewidths=1.5)
+    nx.draw_networkx_edges(G, posiciones, ax=ax, edgelist=aristas_base, edge_color="#cbd5e1", width=1.0)
+    nx.draw_networkx_edges(G, posiciones, ax=ax, edgelist=aristas_destacadas, edge_color="#dc2626", width=4.5)
     
-    posiciones_textos = {nodo: (coords[0], coords[1] + 0.04) for nodo, coords in posiciones.items()}
+    valores_y = [coords[1] for coords in posiciones.values()]
+    offset_texto = max((max(valores_y) - min(valores_y)) * 0.018, 10) if valores_y else 10
+    posiciones_textos = {nodo: (coords[0], coords[1] + offset_texto) for nodo, coords in posiciones.items()}
 
     etiquetas_base = {nodo: nodo for nodo in G.nodes() if nodo not in ruta_optima}
-    nx.draw_networkx_labels(G, posiciones_textos, labels=etiquetas_base, font_size=5, font_color="#475569", bbox=dict(facecolor="white", edgecolor="none", alpha=0.8, pad=0.1))
+    nx.draw_networkx_labels(G, posiciones_textos, ax=ax, labels=etiquetas_base, font_size=5, font_color="#475569", bbox=dict(facecolor="white", edgecolor="none", alpha=0.8, pad=0.1))
 
     etiquetas_km_base = {(u, v): f"{d['weight']} km" for u, v, d in G.edges(data=True) if (u, v) not in aristas_destacadas and (v, u) not in aristas_destacadas}
-    nx.draw_networkx_edge_labels(G, posiciones, edge_labels=etiquetas_km_base, font_size=5, font_color="#94a3b8", bbox=dict(facecolor="white", edgecolor="none", alpha=0.8, pad=0.1))
+    nx.draw_networkx_edge_labels(G, posiciones, ax=ax, edge_labels=etiquetas_km_base, font_size=5, font_color="#94a3b8", bbox=dict(facecolor="white", edgecolor="none", alpha=0.8, pad=0.1))
 
     etiquetas_ruta = {nodo: nodo for nodo in G.nodes() if nodo in ruta_optima}
-    nx.draw_networkx_labels(G, posiciones_textos, labels=etiquetas_ruta, font_size=10, font_weight="bold", font_color="#000000", bbox=dict(facecolor="white", edgecolor="none", alpha=0.9, pad=0.3))
+    nx.draw_networkx_labels(G, posiciones_textos, ax=ax, labels=etiquetas_ruta, font_size=10, font_weight="bold", font_color="#000000", bbox=dict(facecolor="white", edgecolor="none", alpha=0.9, pad=0.3))
     
     etiquetas_km_ruta = {(u, v): f"{d['weight']} km" for u, v, d in G.edges(data=True) if (u, v) in aristas_destacadas or (v, u) in aristas_destacadas}
-    nx.draw_networkx_edge_labels(G, posiciones, edge_labels=etiquetas_km_ruta, font_size=9, font_weight="bold", font_color="#ffffff", bbox=dict(facecolor="#dc2626", edgecolor="none", alpha=1.0, pad=0.3))
+    nx.draw_networkx_edge_labels(G, posiciones, ax=ax, edge_labels=etiquetas_km_ruta, font_size=9, font_weight="bold", font_color="#ffffff", bbox=dict(facecolor="#dc2626", edgecolor="none", alpha=1.0, pad=0.3))
     
-    plt.margins(0.1)
-    plt.tight_layout()
-    plt.show()
+    ax.margins(0.08)
+    ax.axis("off")
+
+    if mostrar_ventana:
+        plt.tight_layout()
+        plt.show()
