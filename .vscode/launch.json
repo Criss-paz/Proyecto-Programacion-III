@@ -9,6 +9,10 @@
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}",
       "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "env": {
+        "PYTHON_COLORS": "0",
+        "NO_COLOR": "1"
+      },
       "subProcess": false,
       "justMyCode": true
     },
@@ -20,6 +24,10 @@
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}",
       "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "env": {
+        "PYTHON_COLORS": "0",
+        "NO_COLOR": "1"
+      },
       "subProcess": false,
       "noDebug": true
     },
@@ -31,6 +39,10 @@
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}",
       "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "env": {
+        "PYTHON_COLORS": "0",
+        "NO_COLOR": "1"
+      },
       "justMyCode": true
     }
   ]
