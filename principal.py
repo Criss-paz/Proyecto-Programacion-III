@@ -1,7 +1,4 @@
-"""
-Punto de entrada del CLIENTE.
-Ejecutar: python principal.py
-"""
+"""Punto de entrada del cliente. Ejecutar: python principal.py"""
 
 import atexit
 import subprocess
@@ -34,20 +31,14 @@ def iniciar_api_si_hace_falta():
         return
 
     raiz = Path(__file__).resolve().parent
-    kwargs = {
-        "cwd": raiz,
-        "stdout": subprocess.DEVNULL,
-        "stderr": subprocess.DEVNULL,
-    }
+    opciones = {"cwd": raiz, "stdout": subprocess.DEVNULL, "stderr": subprocess.DEVNULL}
     if sys.platform.startswith("win"):
-        kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
+        opciones["creationflags"] = subprocess.CREATE_NO_WINDOW
 
-    api_proceso = subprocess.Popen([sys.executable, str(raiz / "api.py")], **kwargs)
+    api_proceso = subprocess.Popen([sys.executable, str(raiz / "api.py")], **opciones)
     limite = time.time() + API_START_TIMEOUT
     while time.time() < limite:
-        if api_esta_activa():
-            return
-        if api_proceso.poll() is not None:
+        if api_esta_activa() or api_proceso.poll() is not None:
             return
         time.sleep(0.25)
 
@@ -62,16 +53,16 @@ def cerrar_api_iniciada():
         api_proceso.kill()
 
 
-def cerrar_aplicacion(root):
-    cerrar_api_iniciada()
-    root.destroy()
-
-
-if __name__ == "__main__":
+def abrir_cliente():
     config_tarifas.obtener()
     iniciar_api_si_hace_falta()
     atexit.register(cerrar_api_iniciada)
+
     root = tk.Tk()
-    root.protocol("WM_DELETE_WINDOW", lambda: cerrar_aplicacion(root))
+    root.protocol("WM_DELETE_WINDOW", lambda: (cerrar_api_iniciada(), root.destroy()))
     AplicacionTransporte(root)
     root.mainloop()
+
+
+if __name__ == "__main__":
+    abrir_cliente()

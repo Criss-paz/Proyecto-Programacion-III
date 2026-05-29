@@ -1,49 +1,73 @@
-"""Algoritmo Floyd-Warshall: distancia mínima y reconstrucción de ruta."""
+"""Algoritmos para calcular rutas minimas."""
 
 import numpy as np
 
-SIN_CONEXION = 999  # Valor del Excel cuando no hay camino directo
+SIN_CONEXION = 999
 
 
 def aplicar_floyd_warshall(matriz_distancias, sin_conexion=SIN_CONEXION):
-    """Calcula distancias mínimas entre todos los pares de nodos."""
-    dist = np.array(matriz_distancias, dtype=float, copy=True)
+    """Devuelve la matriz de distancias minimas y la matriz de recorridos."""
+    dist = _preparar_matriz(matriz_distancias, sin_conexion)
+    recorridos = _crear_matriz_recorridos(dist)
+
     n = dist.shape[0]
-    if dist.ndim != 2 or dist.shape[0] != dist.shape[1]:
-        raise ValueError("La matriz de distancias debe ser cuadrada.")
-
-    dist[(dist == sin_conexion) | np.isnan(dist)] = np.inf
-    np.fill_diagonal(dist, 0)
-
-    recorridos = np.full((n, n), -1, dtype=int)
-    for i in range(n):
-        for j in range(n):
-            if i != j and np.isfinite(dist[i, j]):
-                recorridos[i, j] = j
-
     for k in range(n):
         for i in range(n):
             for j in range(n):
-                via = dist[i, k] + dist[k, j]
-                if via < dist[i, j]:
-                    dist[i, j] = via
+                nueva_distancia = dist[i, k] + dist[k, j]
+                if nueva_distancia < dist[i, j]:
+                    dist[i, j] = nueva_distancia
                     recorridos[i, j] = recorridos[i, k]
     return dist, recorridos
 
 
-def obtener_ruta_minima(recorridos, municipios, i, j):
-    """Reconstruye la lista de municipios desde i hasta j."""
-    if i == j:
-        return [municipios[i]]
-    if recorridos[i, j] == -1:
+def calcular_ruta_floyd(matriz_distancias, municipios, origen, destino):
+    """Devuelve los kilometros y la ruta entre origen y destino."""
+    i = _indice(municipios, origen)
+    j = _indice(municipios, destino)
+    distancias, recorridos = aplicar_floyd_warshall(matriz_distancias)
+
+    total = distancias[i, j]
+    if not np.isfinite(total):
+        return float("inf"), []
+    return _formatear_km(total), obtener_ruta_minima(recorridos, municipios, i, j)
+
+
+def obtener_ruta_minima(recorridos, municipios, origen_idx, destino_idx):
+    """Reconstruye la ruta usando la matriz de recorridos de Floyd."""
+    if origen_idx == destino_idx:
+        return [municipios[origen_idx]]
+    if recorridos[origen_idx, destino_idx] == -1:
         return []
-    ruta, actual = [municipios[i]], i
-    while actual != j:
-        actual = recorridos[actual, j]
+
+    ruta = [municipios[origen_idx]]
+    actual = origen_idx
+    while actual != destino_idx:
+        actual = recorridos[actual, destino_idx]
         if actual == -1:
             return []
         ruta.append(municipios[actual])
     return ruta
+
+
+def _preparar_matriz(matriz_distancias, sin_conexion):
+    matriz = np.array(matriz_distancias, dtype=float, copy=True)
+    if matriz.ndim != 2 or matriz.shape[0] != matriz.shape[1]:
+        raise ValueError("La matriz de distancias debe ser cuadrada.")
+
+    matriz[(matriz == sin_conexion) | np.isnan(matriz)] = np.inf
+    np.fill_diagonal(matriz, 0)
+    return matriz
+
+
+def _crear_matriz_recorridos(distancias):
+    n = distancias.shape[0]
+    recorridos = np.full((n, n), -1, dtype=int)
+    for i in range(n):
+        for j in range(n):
+            if i != j and np.isfinite(distancias[i, j]):
+                recorridos[i, j] = j
+    return recorridos
 
 
 def _indice(municipios, municipio):
@@ -55,12 +79,6 @@ def _indice(municipios, municipio):
         raise ValueError(f"El municipio '{municipio}' no existe.") from e
 
 
-def calcular_ruta_floyd(matriz_distancias, municipios, origen, destino):
-    """Punto de entrada: devuelve (kilómetros, lista_de_municipios)."""
-    i, j = _indice(municipios, origen), _indice(municipios, destino)
-    dist, recorridos = aplicar_floyd_warshall(matriz_distancias)
-    total = dist[i, j]
-    if not np.isfinite(total):
-        return float("inf"), []
-    km = int(total) if float(total).is_integer() else float(total)
-    return km, obtener_ruta_minima(recorridos, municipios, i, j)
+def _formatear_km(valor):
+    valor = round(float(valor), 2)
+    return int(valor) if valor.is_integer() else valor
