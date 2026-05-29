@@ -6,36 +6,34 @@ El sistema simula una empresa de transporte que tiene agencias en cabeceras muni
 
 Departamentos elegidos: Guatemala, Sacatepequez y Chimaltenango. Dijkstra se omite por indicacion del catedratico, por lo que la explicacion del algoritmo se centra en Floyd-Warshall.
 
-## Capas del proyecto
+## Flujo del sistema
 
 ```text
-datos/distancias.xlsx
-        -> nucleo/lector_excel.py
-        -> servidor/app.py
-        -> nucleo/algoritmos.py
-        -> cliente/vista_cotizador.py
+distancias.xlsx
+        -> lector_excel.py
+        -> api_servidor.py
+        -> algoritmos.py
+        -> cliente_ui.py
+        -> visualizador_grafo.py
 ```
 
 ## Archivos importantes
 
 | Archivo | Funcion |
 |---|---|
-| `principal.py` | Inicia la aplicacion de escritorio y levanta la API si hace falta. |
-| `api.py` | Inicia el servidor Flask. |
-| `datos/distancias.xlsx` | Matriz de distancias en kilometros. |
-| `datos/grafo.drawio` | Grafo elaborado en draw.io. |
-| `nucleo/lector_excel.py` | Lee el Excel y devuelve municipios + matriz NumPy. |
-| `nucleo/algoritmos.py` | Ejecuta Floyd-Warshall y reconstruye la ruta minima. |
-| `nucleo/config_tarifas.py` | Guarda costo base, costo por km, costo por libra y utilidad. |
-| `servidor/app.py` | Expone `/datos`, `/ruta`, `/floyd` y `/status`. |
-| `cliente/aplicacion.py` | Ventana principal, nombre de empresa, logo y estado de API. |
-| `cliente/vista_cotizador.py` | Formulario de origen, destino, peso, ruta y factura. |
-| `cliente/vista_admin.py` | Estado de datos, tarifas y matriz resultante de Floyd. |
-| `cliente/visualizador_grafo.py` | Dibuja el grafo no dirigido con NetworkX y Matplotlib. |
+| `api_servidor.py` | Inicia el servidor Flask y expone la ruta `/calcular_ruta`. |
+| `cliente_ui.py` | Interfaz grafica Tkinter para seleccionar origen, destino, peso y mostrar la cotizacion. |
+| `distancias.xlsx` | Matriz de distancias en kilometros entre municipios. |
+| `grafo.drawio` | Grafo elaborado en draw.io y aprobado para la entrega. |
+| `lector_excel.py` | Lee el Excel y devuelve municipios + matriz NumPy. |
+| `algoritmos.py` | Ejecuta Floyd-Warshall y reconstruye la ruta minima. |
+| `config_tarifas.py` | Guarda costo base, costo por km, costo por libra y utilidad. |
+| `visualizador_grafo.py` | Dibuja el grafo con NetworkX y Matplotlib usando posiciones del archivo Draw.io. |
+| `logo.png` | Logo usado para personalizar la empresa. |
 
 ## Algoritmo Floyd-Warshall
 
-El algoritmo esta en `nucleo/algoritmos.py`.
+El algoritmo esta en `algoritmos.py`, funcion `aplicar_floyd_warshall`.
 
 1. Recibe una matriz cuadrada de distancias.
 2. Convierte valores sin conexion a infinito.
@@ -45,23 +43,38 @@ El algoritmo esta en `nucleo/algoritmos.py`.
    - matriz de distancias minimas;
    - matriz de recorridos para reconstruir la ruta.
 
-La API expone la matriz resultante en:
+La ruta se reconstruye con `obtener_ruta_minima`, siguiendo la matriz de recorridos desde el origen hasta llegar al destino.
+
+## API cliente-servidor
+
+La aplicacion esta dividida en dos partes para cumplir los puntos extra:
 
 ```text
-GET /floyd
+Servidor/API: api_servidor.py
+Cliente GUI:  cliente_ui.py
 ```
 
-En la aplicacion se puede ver desde:
+El cliente envia origen y destino a:
 
 ```text
-Administrador -> Ver Matriz Floyd
+POST /calcular_ruta
 ```
 
-## Grafo no dirigido
+La API responde con:
 
-El visualizador usa `nx.Graph()` porque el catedratico indico que el grafo debe manejarse como no dirigido.
+```text
+distancia_km
+ruta_optima
+mensaje
+```
 
-La matriz del Excel es simetrica, por lo que la distancia de ida y vuelta entre dos municipios es la misma. Por esa razon, en pantalla se dibuja una sola arista entre cada par de municipios y no se muestran flechas.
+El peso no se envia a la API porque el cliente lo usa localmente para calcular el costo del envio despues de recibir los kilometros.
+
+## Grafo
+
+El grafo fue elaborado en `grafo.drawio`. Para mostrarlo en pantalla, `visualizador_grafo.py` crea un grafo con `nx.Graph()` y usa Matplotlib para dibujarlo.
+
+El visualizador lee las posiciones del archivo Draw.io para que el mapa se parezca al grafo aprobado. La ruta mas corta se resalta en rojo y los demas nodos/aristas quedan en colores suaves.
 
 ## Formula de cobro
 
@@ -74,38 +87,39 @@ Los valores y su justificacion estan documentados en `docs/TARIFAS.md`.
 
 ## Demostracion sugerida
 
-1. Ejecutar `python principal.py`.
-2. Confirmar que la API aparece como conectada.
+1. Ejecutar el servidor:
+
+```text
+python api_servidor.py
+```
+
+2. Ejecutar el cliente:
+
+```text
+python cliente_ui.py
+```
+
 3. Seleccionar origen `GUATEMALA`.
 4. Seleccionar destino `LA ANTIGUA GUATEMALA`.
 5. Ingresar peso `5`.
-6. Presionar `Calcular`.
+6. Presionar `Calcular Ruta y Ver Mapa`.
 7. Mostrar:
    - ruta resaltada en el grafo;
    - kilometros en azul;
    - costo total;
    - precio final en rojo.
-8. Ir a `Administrador`.
-9. Mostrar lista de municipios, tarifas y matriz Floyd.
 
 ## Ejemplo de resultado
 
-Para `GUATEMALA -> LA ANTIGUA GUATEMALA` con 5 lb:
-
-```text
-Ruta: GUATEMALA -> MIXCO -> SAN LUCAS SACATEPEQUEZ -> SANTA LUCIA MILPAS ALTAS -> LA ANTIGUA GUATEMALA
-Distancia: 43 km
-Costo total: Q125.00
-Precio final: Q175.00
-```
+Para `GUATEMALA -> LA ANTIGUA GUATEMALA` con 5 lb, el sistema muestra la ruta minima calculada por Floyd-Warshall, la distancia en kilometros y la cotizacion con las tarifas configuradas.
 
 ## Preguntas probables
 
 **Donde se cargan los datos?**  
-En `nucleo/lector_excel.py`, desde `datos/distancias.xlsx`.
+En `lector_excel.py`, desde `distancias.xlsx`.
 
-**Donde esta Floyd?**  
-En `nucleo/algoritmos.py`, funcion `aplicar_floyd_warshall`.
+**Donde esta Floyd-Warshall?**  
+En `algoritmos.py`, funcion `aplicar_floyd_warshall`.
 
 **Como se reconstruye la ruta?**  
 Con la matriz de recorridos, siguiendo el siguiente nodo desde el origen hasta llegar al destino.
@@ -114,4 +128,7 @@ Con la matriz de recorridos, siguiendo el siguiente nodo desde el origen hasta l
 Para separar el calculo de rutas de la interfaz grafica y cumplir los puntos extra cliente-servidor.
 
 **Donde estan las tarifas?**  
-En `nucleo/config_tarifas.py`; la justificacion esta en `docs/TARIFAS.md`.
+En `config_tarifas.py`; la justificacion esta en `docs/TARIFAS.md`.
+
+**Que datos devuelve la API?**  
+Devuelve los kilometros de la ruta mas corta y los nodos por los que se pasa.

@@ -19,7 +19,7 @@ Precio_final = Costo_total * (1 + Utilidad)
 
 ## Valores configurados
 
-Los valores actuales estan en `nucleo/config_tarifas.py`.
+Los valores actuales estan en `config_tarifas.py`.
 
 | Concepto | Valor | Justificacion |
 |---|---:|---|

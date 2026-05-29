@@ -12,14 +12,16 @@ Para exponer el proyecto, revisar:
 ## Estructura
 
 ```text
-api.py                 -> inicia el servidor Flask
-principal.py           -> inicia el cliente Tkinter
-datos/distancias.xlsx  -> matriz de distancias entre municipios
-datos/grafo.drawio     -> grafo elaborado en draw.io
-nucleo/                -> lectura de Excel, Floyd-Warshall y tarifas
-servidor/              -> API REST
-cliente/               -> interfaz grafica
-docs/                  -> documentacion de exposicion y tarifas
+api_servidor.py       -> inicia el servidor Flask/API
+cliente_ui.py         -> inicia el cliente grafico Tkinter
+distancias.xlsx       -> matriz de distancias entre municipios
+grafo.drawio          -> grafo elaborado en draw.io
+lector_excel.py       -> lectura del archivo Excel
+algoritmos.py         -> algoritmo Floyd-Warshall y reconstruccion de ruta
+config_tarifas.py     -> costos base, por km, por libra y utilidad
+visualizador_grafo.py -> dibujo del grafo con NetworkX y Matplotlib
+logo.png              -> logo de la empresa
+docs/                 -> documentacion de exposicion y tarifas
 ```
 
 ## Ejecucion
@@ -30,29 +32,34 @@ Instalar dependencias:
 pip install -r requirements.txt
 ```
 
-Opcion recomendada:
+Ejecutar el servidor en una terminal:
 
 ```bash
-python principal.py
+python api_servidor.py
 ```
 
-El cliente intenta iniciar la API automaticamente.
-
-Tambien se puede ejecutar por separado:
+Ejecutar el cliente en otra terminal:
 
 ```bash
-python api.py
-python principal.py
+python cliente_ui.py
 ```
+
+El servidor debe quedar activo en `http://127.0.0.1:5000` mientras se usa el cliente.
 
 ## API
 
 | Metodo | Ruta | Descripcion |
 |---|---|---|
-| GET | `/status` | Estado del servidor y dimensiones de la matriz |
-| GET | `/datos` | Municipios y matriz original |
-| GET | `/ruta?origen=X&destino=Y` | Kilometros y ruta mas corta |
-| GET | `/floyd` | Matriz resultante de Floyd-Warshall y matriz de recorridos |
+| POST | `/calcular_ruta` | Recibe `origen` y `destino`; devuelve kilometros y nodos de la ruta mas corta calculada con Floyd-Warshall. |
+
+Ejemplo de cuerpo JSON:
+
+```json
+{
+  "origen": "GUATEMALA",
+  "destino": "LA ANTIGUA GUATEMALA"
+}
+```
 
 ## Tarifas
 
