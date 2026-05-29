@@ -1,11 +1,10 @@
 """Punto de entrada del cliente. Ejecutar: python principal.py"""
 
 import atexit
-import subprocess
-import sys
+import logging
 import time
 import tkinter as tk
-from pathlib import Path
+from threading import Thread
 from urllib.error import URLError
 from urllib.request import urlopen
 
@@ -14,7 +13,8 @@ from nucleo import config_tarifas
 
 API_STATUS_URL = "http://127.0.0.1:5000/status"
 API_START_TIMEOUT = 8
-api_proceso = None
+api_servidor = None
+api_hilo = None
 
 
 def api_esta_activa():
@@ -26,31 +26,40 @@ def api_esta_activa():
 
 
 def iniciar_api_si_hace_falta():
-    global api_proceso
+    global api_servidor, api_hilo
     if api_esta_activa():
         return
 
-    raiz = Path(__file__).resolve().parent
-    opciones = {"cwd": raiz, "stdout": subprocess.DEVNULL, "stderr": subprocess.DEVNULL}
-    if sys.platform.startswith("win"):
-        opciones["creationflags"] = subprocess.CREATE_NO_WINDOW
+    from servidor.app import app
+    from werkzeug.serving import make_server
 
-    api_proceso = subprocess.Popen([sys.executable, str(raiz / "api.py")], **opciones)
+    try:
+        api_servidor = make_server("127.0.0.1", 5000, app)
+    except OSError as error:
+        print(f"No se pudo iniciar la API en 127.0.0.1:5000: {error}")
+        api_servidor = None
+        return
+
+    logging.getLogger("werkzeug").setLevel(logging.ERROR)
+    api_hilo = Thread(target=api_servidor.serve_forever, name="api-flask", daemon=True)
+    api_hilo.start()
+
     limite = time.time() + API_START_TIMEOUT
     while time.time() < limite:
-        if api_esta_activa() or api_proceso.poll() is not None:
+        if api_esta_activa():
             return
         time.sleep(0.25)
 
 
 def cerrar_api_iniciada():
-    if api_proceso is None or api_proceso.poll() is not None:
+    global api_servidor, api_hilo
+    if api_servidor is None:
         return
-    api_proceso.terminate()
-    try:
-        api_proceso.wait(timeout=3)
-    except subprocess.TimeoutExpired:
-        api_proceso.kill()
+    api_servidor.shutdown()
+    if api_hilo is not None:
+        api_hilo.join(timeout=3)
+    api_servidor = None
+    api_hilo = None
 
 
 def abrir_cliente():
