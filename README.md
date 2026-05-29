@@ -1,67 +1,75 @@
-# Envíos Rápidos GT - Sistema de Rutas y Cotizaciones
+# Envios Rapidos GT - Sistema de Rutas y Cotizaciones
 
-Aplicación **cliente-servidor** en Python para cotizar envíos entre municipios de Guatemala usando **Floyd-Warshall**, API **Flask** e interfaz **Tkinter**.
+Aplicacion cliente-servidor en Python para cotizar envios entre municipios de Guatemala usando Floyd-Warshall, Flask, Tkinter, Matplotlib y NetworkX.
 
-> **Para exponer el proyecto:** lee [`docs/GUIA_EXPOSICION.md`](docs/GUIA_EXPOSICION.md) — orden de archivos y explicación línea por línea.
+Departamentos elegidos: Guatemala, Sacatepequez y Chimaltenango. El algoritmo de Dijkstra se omite por indicacion del catedratico; el calculo de rutas minimas se realiza con Floyd-Warshall.
 
----
+Para exponer el proyecto, revisar:
 
-## Estructura del proyecto
+- `docs/GUIA_EXPOSICION.md`: guia de funcionamiento por archivo.
+- `docs/TARIFAS.md`: procedimiento usado para definir costo base, costo por kilometro, costo por libra y utilidad.
 
+## Estructura
+
+```text
+api.py                 -> inicia el servidor Flask
+principal.py           -> inicia el cliente Tkinter
+datos/distancias.xlsx  -> matriz de distancias entre municipios
+datos/grafo.drawio     -> grafo elaborado en draw.io
+nucleo/                -> lectura de Excel, Floyd-Warshall y tarifas
+servidor/              -> API REST
+cliente/               -> interfaz grafica
+docs/                  -> documentacion de exposicion y tarifas
 ```
-├── api.py              → Inicia el servidor
-├── principal.py        → Inicia el cliente
-├── datos/              → Excel y diagrama del grafo
-├── nucleo/             → Algoritmos, Excel y tarifas
-├── servidor/           → API Flask
-├── cliente/            → Interfaz gráfica
-└── docs/               → Guía de exposición
-```
 
----
+## Ejecucion
 
-## Ejecución
+Instalar dependencias:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-**Terminal 1 — API:**
-```bash
-python api.py
-```
+Opcion recomendada:
 
-**Terminal 2 — Cliente:**
 ```bash
 python principal.py
 ```
 
-En VS Code: configuraciones **「1. Cliente」** y **「2. API」** en el depurador.
+El cliente intenta iniciar la API automaticamente.
 
----
+Tambien se puede ejecutar por separado:
 
-## API (Flask)
+```bash
+python api.py
+python principal.py
+```
 
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| GET | `/status` | Estado del servidor |
-| GET | `/datos` | Municipios + matriz |
-| GET | `/ruta?origen=X&destino=Y` | Km y ruta óptima |
+## API
 
----
+| Metodo | Ruta | Descripcion |
+|---|---|---|
+| GET | `/status` | Estado del servidor y dimensiones de la matriz |
+| GET | `/datos` | Municipios y matriz original |
+| GET | `/ruta?origen=X&destino=Y` | Kilometros y ruta mas corta |
+| GET | `/floyd` | Matriz resultante de Floyd-Warshall y matriz de recorridos |
 
 ## Tarifas
 
-Archivo único: **`nucleo/config_tarifas.py`**
+Valores actuales:
 
+```text
+Costo_base = Q15.00
+Costo_km = Q2.50/km
+Costo_libra = Q0.50/lb
+Utilidad = 40%
 ```
-Precio = (Base + km×Q/km + lb×Q/lb) × (1 + margen)
+
+Formula:
+
+```text
+Costo_total = Costo_base + (Costo_km * kilometros) + (Costo_libra * peso_paquete)
+Precio_final = Costo_total + Costo_total * Utilidad
 ```
 
-Valores por defecto: Base Q15, Q0.35/km, Q1/lb, margen 30%.
-
----
-
-## Tecnologías
-
-Python 3.10+, Flask, pandas, NumPy, Tkinter, matplotlib, networkx, requests.
+La justificacion completa esta en `docs/TARIFAS.md`.

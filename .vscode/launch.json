@@ -3,19 +3,47 @@
   "configurations": [
     {
       "name": "1. Cliente (principal.py)",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "program": "${workspaceFolder}/principal.py",
       "console": "integratedTerminal",
-      "cwd": "${workspaceFolder}"
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "env": {
+        "PYTHON_COLORS": "0",
+        "NO_COLOR": "1"
+      },
+      "subProcess": false,
+      "justMyCode": true
+    },
+    {
+      "name": "1b. Cliente sin depurador",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/principal.py",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "env": {
+        "PYTHON_COLORS": "0",
+        "NO_COLOR": "1"
+      },
+      "subProcess": false,
+      "noDebug": true
     },
     {
       "name": "2. API (api.py)",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "program": "${workspaceFolder}/api.py",
       "console": "integratedTerminal",
-      "cwd": "${workspaceFolder}"
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "env": {
+        "PYTHON_COLORS": "0",
+        "NO_COLOR": "1"
+      },
+      "justMyCode": true
     }
   ]
 }
