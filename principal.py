@@ -62,14 +62,25 @@ def cerrar_api_iniciada():
     api_hilo = None
 
 
+def conectar_cliente_cuando_api_este_lista(root, app_cliente):
+    def tarea():
+        iniciar_api_si_hace_falta()
+        try:
+            root.after(0, app_cliente.reconectar_api)
+        except (RuntimeError, tk.TclError):
+            pass
+
+    Thread(target=tarea, name="api-inicio", daemon=True).start()
+
+
 def abrir_cliente():
     config_tarifas.obtener()
-    iniciar_api_si_hace_falta()
     atexit.register(cerrar_api_iniciada)
 
     root = tk.Tk()
     root.protocol("WM_DELETE_WINDOW", lambda: (cerrar_api_iniciada(), root.destroy()))
-    AplicacionTransporte(root)
+    app_cliente = AplicacionTransporte(root, conectar_al_inicio=False)
+    conectar_cliente_cuando_api_este_lista(root, app_cliente)
     root.mainloop()
 
 

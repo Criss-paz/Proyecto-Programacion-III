@@ -15,7 +15,7 @@ from cliente.vista_cotizador import VistaCotizador
 
 
 class AplicacionTransporte(VistaCotizador, VistaAdmin, UIHelpers):
-    def __init__(self, root):
+    def __init__(self, root, conectar_al_inicio=True):
         self.root = root
         self.root.title("Envios Rapidos GT")
         self.root.geometry("1180x720")
@@ -24,6 +24,7 @@ class AplicacionTransporte(VistaCotizador, VistaAdmin, UIHelpers):
 
         self.municipios, self.matriz = [], None
         self.api_conectada, self.ruta_actual = False, []
+        self.conectando_api = not conectar_al_inicio
         self.zoom_grafo, self.desplazamiento_grafo = 1.0, (0.0, 0.0)
 
         estilo = ttk.Style()
@@ -34,7 +35,11 @@ class AplicacionTransporte(VistaCotizador, VistaAdmin, UIHelpers):
         self._crear_encabezado()
         self.contenido = tk.Frame(self.root, bg=COLOR_FONDO)
         self.contenido.pack(fill="both", expand=True, padx=22, pady=20)
-        self.reconectar_api()
+        if conectar_al_inicio:
+            self.reconectar_api()
+        else:
+            self.vista_actual = "cotizador"
+            self.refrescar_vista()
 
     def _crear_encabezado(self):
         encabezado = tk.Frame(self.root, bg=COLOR_PANEL, highlightbackground=COLOR_BORDE, highlightthickness=1)
@@ -72,7 +77,9 @@ class AplicacionTransporte(VistaCotizador, VistaAdmin, UIHelpers):
     def refrescar_vista(self):
         for widget in self.contenido.winfo_children():
             widget.destroy()
-        if not self.api_conectada:
+        if not self.api_conectada and self.conectando_api:
+            self._pantalla_conectando()
+        elif not self.api_conectada:
             self._pantalla_error()
         elif self.vista_actual == "cotizador":
             self.mostrar_cotizador()
@@ -85,6 +92,7 @@ class AplicacionTransporte(VistaCotizador, VistaAdmin, UIHelpers):
         return respuesta.json()
 
     def reconectar_api(self):
+        self.conectando_api = True
         self._estado_api("API: Conectando...", COLOR_SUAVE, "#f1f5f9")
         try:
             datos = self._api("/datos")
@@ -95,6 +103,7 @@ class AplicacionTransporte(VistaCotizador, VistaAdmin, UIHelpers):
             self.municipios, self.matriz, self.api_conectada = [], None, False
             self._estado_api("API: Desconectada", "#ffffff", COLOR_ERROR)
 
+        self.conectando_api = False
         if not hasattr(self, "vista_actual"):
             self.vista_actual = "cotizador"
         self.cambiar_pestana(self.vista_actual)
@@ -110,3 +119,9 @@ class AplicacionTransporte(VistaCotizador, VistaAdmin, UIHelpers):
         self._label(panel, f"No se pudo conectar con {API_URL}.\nLa app intento iniciar la API automaticamente.",
                     11, color=COLOR_TEXTO, pady=10)
         self._boton(panel, "Intentar Reconectar", self.reconectar_api, primario=True).pack(pady=20)
+
+    def _pantalla_conectando(self):
+        panel = tk.Frame(self.contenido, bg=COLOR_PANEL, highlightbackground=COLOR_BORDE, highlightthickness=1)
+        panel.pack(fill="both", expand=True, padx=40, pady=40)
+        self._label(panel, "Iniciando aplicacion...", 20, True, COLOR_TEXTO, pady=(80, 10))
+        self._label(panel, "Preparando la API y cargando los datos.", 11, color=COLOR_TEXTO, pady=10)
