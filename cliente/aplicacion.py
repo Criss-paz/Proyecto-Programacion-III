@@ -96,9 +96,17 @@ class AplicacionTransporte(VistaCotizador, VistaAdmin, UIHelpers):
         self.root.update_idletasks()
 
     def _pantalla_error(self):
+<<<<<<< HEAD
         panel = tk.Frame(self.contenido, bg=COLOR_PANEL, highlightbackground=COLOR_BORDE, highlightthickness=1)
         panel.pack(fill="both", expand=True, padx=40, pady=40)
         self._label(panel, "Servidor API fuera de linea", 20, True, COLOR_ERROR, pady=(60, 10))
         self._label(panel, f"No se pudo conectar con {API_URL}.\nLa app intento iniciar la API automaticamente.",
                     11, color=COLOR_TEXTO, pady=10)
         self._boton(panel, "Intentar Reconectar", self.reconectar_api, primario=True).pack(pady=20)
+=======
+        err = tk.Frame(self.contenido, bg=COLOR_PANEL, highlightbackground=COLOR_BORDE, highlightthickness=1)
+        err.pack(fill="both", expand=True, padx=40, pady=40)
+        tk.Label(err, text="Servidor API fuera de línea", bg=COLOR_PANEL, fg=COLOR_ERROR, font=("Segoe UI", 20, "bold")).pack(pady=(60, 10))
+        tk.Label(err, text=f"No se pudo conectar con {API_URL}.\nEjecuta 'python api.py' primero.", bg=COLOR_PANEL, fg=COLOR_TEXTO, font=("Segoe UI", 11), justify="center").pack(pady=10)
+        self._boton(err, "🔄 Intentar Reconectar", self.reconectar_api, primario=True).pack(pady=20)
+>>>>>>> parent of 67c534d (Actualizacion API)

@@ -1,16 +1,8 @@
 """Punto de entrada del cliente. Ejecutar: python principal.py"""
 
-import atexit
-import subprocess
-import sys
-import time
 import tkinter as tk
-from pathlib import Path
-from urllib.error import URLError
-from urllib.request import urlopen
-
-from cliente.aplicacion import AplicacionTransporte
 from nucleo import config_tarifas
+<<<<<<< HEAD
 
 API_STATUS_URL = "http://127.0.0.1:5000/status"
 API_START_TIMEOUT = 8
@@ -60,6 +52,13 @@ def abrir_cliente():
 
     root = tk.Tk()
     root.protocol("WM_DELETE_WINDOW", lambda: (cerrar_api_iniciada(), root.destroy()))
+=======
+from cliente.aplicacion import AplicacionTransporte
+
+if __name__ == "__main__":
+    config_tarifas.obtener()
+    root = tk.Tk()
+>>>>>>> parent of 67c534d (Actualizacion API)
     AplicacionTransporte(root)
     root.mainloop()
 
