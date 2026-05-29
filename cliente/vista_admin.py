@@ -20,7 +20,10 @@ class VistaAdmin:
         panel.pack(fill="both", expand=True)
         self._titulo(panel, "Administrador", "Estado de la API y configuracion de tarifas.")
         self._resumen_api(panel)
-        self._boton(panel, "Verificar Conexion", self.reconectar_api, primario=True).pack(anchor="w", padx=20, pady=(6, 12))
+        acciones = tk.Frame(panel, bg=COLOR_PANEL)
+        acciones.pack(anchor="w", padx=20, pady=(6, 12))
+        self._boton(acciones, "Verificar Conexion", self.reconectar_api, primario=True).pack(side="left")
+        self._boton(acciones, "Ver Matriz Floyd", self.mostrar_matriz_floyd).pack(side="left", padx=8)
 
         cuerpo = tk.Frame(panel, bg=COLOR_PANEL)
         cuerpo.pack(fill="both", expand=True, padx=20, pady=(0, 20))
@@ -96,3 +99,63 @@ class VistaAdmin:
             return
         messagebox.showinfo("Exito", "Tarifas guardadas en nucleo/config_tarifas.py.")
         self.mostrar_administrador()
+
+    def mostrar_matriz_floyd(self):
+        try:
+            datos = self._api("/floyd", timeout=8.0)
+        except Exception as e:
+            messagebox.showerror("Error", f"No se pudo obtener la matriz Floyd.\nDetalle: {e}")
+            return
+
+        municipios = datos["municipios"]
+        distancias = datos["distancias"]
+        ventana = tk.Toplevel(self.root)
+        ventana.title("Matriz resultante de Floyd")
+        ventana.geometry("980x560")
+        ventana.configure(bg=COLOR_PANEL)
+
+        self._label(
+            ventana,
+            "Matriz resultante de Floyd-Warshall",
+            14,
+            True,
+            COLOR_TEXTO,
+            anchor="w",
+            padx=18,
+            pady=(14, 4),
+        )
+        self._label(
+            ventana,
+            "Cada celda contiene la menor distancia en kilometros entre el municipio de la fila y el municipio de la columna.",
+            9,
+            color=COLOR_SUAVE,
+            anchor="w",
+            padx=18,
+            pady=(0, 10),
+        )
+
+        contenedor = tk.Frame(ventana, bg=COLOR_PANEL)
+        contenedor.pack(fill="both", expand=True, padx=18, pady=(0, 18))
+        scroll_y = ttk.Scrollbar(contenedor, orient="vertical")
+        scroll_x = ttk.Scrollbar(contenedor, orient="horizontal")
+        texto = tk.Text(
+            contenedor,
+            wrap="none",
+            bg="#f8fafc",
+            fg=COLOR_TEXTO,
+            font=("Consolas", 9),
+            yscrollcommand=scroll_y.set,
+            xscrollcommand=scroll_x.set,
+        )
+        scroll_y.config(command=texto.yview)
+        scroll_x.config(command=texto.xview)
+        scroll_y.pack(side="right", fill="y")
+        scroll_x.pack(side="bottom", fill="x")
+        texto.pack(side="left", fill="both", expand=True)
+
+        encabezado = ["Origen/Destino"] + municipios
+        filas = ["\t".join(encabezado)]
+        for municipio, fila in zip(municipios, distancias):
+            filas.append("\t".join([municipio] + [f"{valor:g}" for valor in fila]))
+        texto.insert("1.0", "\n".join(filas))
+        texto.config(state="disabled")

@@ -42,6 +42,7 @@ class AplicacionTransporte(VistaCotizador, VistaAdmin, UIHelpers):
 
         info = tk.Frame(encabezado, bg=COLOR_PANEL)
         info.pack(side="left", padx=24, pady=16)
+        self._crear_logo(info)
         self._label(info, "Envios Rapidos GT", 18, True, COLOR_TEXTO, side="left")
         self.lbl_status_api = tk.Label(info, text="API: Conectando...", bg="#f1f5f9",
                                        fg=COLOR_SUAVE, font=("Segoe UI", 9, "bold"), padx=10, pady=3)
@@ -53,6 +54,13 @@ class AplicacionTransporte(VistaCotizador, VistaAdmin, UIHelpers):
         self.btn_admin = self._boton(nav, "Administrador", lambda: self.cambiar_pestana("admin"))
         self.btn_cotizador.pack(side="left", padx=5)
         self.btn_admin.pack(side="left", padx=5)
+
+    def _crear_logo(self, parent):
+        logo = tk.Canvas(parent, width=46, height=46, bg=COLOR_PANEL, highlightthickness=0)
+        logo.pack(side="left", padx=(0, 12))
+        logo.create_oval(3, 3, 43, 43, fill=COLOR_PRIMARIO, outline="")
+        logo.create_polygon(13, 14, 34, 23, 13, 32, 18, 24, fill="#ffffff", outline="")
+        logo.create_line(19, 23, 34, 23, fill=COLOR_PANEL, width=2)
 
     def cambiar_pestana(self, vista):
         self.vista_actual = vista

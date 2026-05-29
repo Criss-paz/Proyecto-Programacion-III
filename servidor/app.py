@@ -32,6 +32,16 @@ def obtener_ruta():
     return jsonify(cuerpo), codigo
 
 
+@app.route("/floyd", methods=["GET"])
+def obtener_floyd():
+    distancias, recorridos = algoritmos.aplicar_floyd_warshall(matriz)
+    return jsonify({
+        "municipios": municipios,
+        "distancias": _matriz_para_json(distancias),
+        "recorridos": recorridos.tolist(),
+    })
+
+
 @app.errorhandler(404)
 def ruta_no_encontrada(_):
     return jsonify({"error": "Ruta no encontrada"}), 404
@@ -56,8 +66,9 @@ def _calcular_ruta(origen, destino):
     return {"km": km, "ruta": ruta}, 200
 
 
-def _matriz_para_json():
-    matriz_limpia = np.where(np.isinf(matriz) | np.isnan(matriz), 999, matriz)
+def _matriz_para_json(matriz_origen=None):
+    datos = matriz if matriz_origen is None else matriz_origen
+    matriz_limpia = np.where(np.isinf(datos) | np.isnan(datos), 999, datos)
     return matriz_limpia.tolist()
 
 
