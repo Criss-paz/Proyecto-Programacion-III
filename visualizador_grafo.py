@@ -1,6 +1,72 @@
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
+from pathlib import Path
+import html
+import re
+import unicodedata
+import xml.etree.ElementTree as ET
+
+
+RUTA_DRAWIO = Path(__file__).resolve().parent / "grafo.drawio"
+
+
+ALIAS_DRAWIO = {
+    "CIUDAD DE GUATEMALA": "GUATEMALA",
+    "SACATEPEQUEZ ANTIGUA GUATEMALA": "LA ANTIGUA GUATEMALA",
+    "COMALAPA": "SAN JUAN COMALAPA",
+    "TECPAN": "TECPAN GUATEMALA",
+    "SAN RAIMUNDO": "SAN RAYMUNDO",
+    "CHUARRAMCHO": "CHUARRANCHO",
+    "SAN ANDREZ IZTAPA": "SAN ANDRES ITZAPA",
+    "SAN PEDRO AYAPUC": "SAN PEDRO AYAMPUC",
+}
+
+
+def _normalizar_nombre(texto):
+    texto = html.unescape(texto or "")
+    texto = re.sub(r"<[^>]+>", " ", texto)
+    texto = texto.replace("\xa0", " ")
+    texto = re.sub(r"^\s*\d+\s*[\.\-]?\s*", "", texto)
+    texto = re.sub(r"\s+", " ", texto).strip().upper()
+    texto = "".join(
+        c for c in unicodedata.normalize("NFD", texto)
+        if unicodedata.category(c) != "Mn"
+    )
+    return ALIAS_DRAWIO.get(texto, texto)
+
+
+def _posiciones_desde_drawio(municipios):
+    if not RUTA_DRAWIO.exists():
+        return {}
+
+    municipios_por_nombre = {_normalizar_nombre(m): m for m in municipios}
+    posiciones = {}
+
+    try:
+        raiz = ET.parse(RUTA_DRAWIO).getroot()
+    except ET.ParseError:
+        return {}
+
+    for celda in raiz.iter("mxCell"):
+        if celda.get("vertex") != "1" or celda.get("connectable") == "0":
+            continue
+        if "ellipse" not in celda.get("style", ""):
+            continue
+
+        municipio = municipios_por_nombre.get(_normalizar_nombre(celda.get("value", "")))
+        if not municipio:
+            continue
+
+        geometria = celda.find("mxGeometry")
+        if geometria is None:
+            continue
+
+        x = float(geometria.get("x", 0)) + float(geometria.get("width", 0)) / 2
+        y = float(geometria.get("y", 0)) + float(geometria.get("height", 0)) / 2
+        posiciones[municipio] = (x, -y)
+
+    return posiciones
 
 def dibujar_mapa(municipios, matriz, ruta_optima):
     G = nx.Graph()
@@ -30,7 +96,20 @@ def dibujar_mapa(municipios, matriz, ruta_optima):
     plt.figure(figsize=(16, 9))
     plt.title("Mapa de Rutas - Envíos Rápidos GT (Cerrar para continuar)", fontsize=16, fontweight="bold", pad=15)
     
-    posiciones = nx.spring_layout(G, k=8.0, weight=None, seed=42, iterations=1500) 
+    posiciones = _posiciones_desde_drawio(municipios)
+    if len(posiciones) < len(municipios):
+        faltantes = [nodo for nodo in municipios if nodo not in posiciones]
+        for indice, nodo in enumerate(faltantes):
+            vecinos = [vecino for vecino in G.neighbors(nodo) if vecino in posiciones]
+            if vecinos:
+                x = sum(posiciones[vecino][0] for vecino in vecinos) / len(vecinos)
+                y = sum(posiciones[vecino][1] for vecino in vecinos) / len(vecinos)
+                posiciones[nodo] = (x - 120 + (indice * 30), y - 80)
+
+        faltantes = [nodo for nodo in municipios if nodo not in posiciones]
+        if faltantes:
+            posiciones_extra = nx.spring_layout(G.subgraph(faltantes), k=8.0, weight=None, seed=42, iterations=500)
+            posiciones.update(posiciones_extra)
     
     nx.draw_networkx_nodes(G, posiciones, node_color=color_nodos, node_size=tamano_nodos, edgecolors="#0f172a", linewidths=1.5)
     nx.draw_networkx_edges(G, posiciones, edgelist=aristas_base, edge_color="#cbd5e1", width=1.0)
