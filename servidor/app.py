@@ -68,7 +68,7 @@ def _calcular_ruta(origen, destino):
 
 def _matriz_para_json(matriz_origen=None):
     datos = matriz if matriz_origen is None else matriz_origen
-    matriz_limpia = np.where(np.isinf(datos) | np.isnan(datos), 999, datos)
+    matriz_limpia = np.where(np.isinf(datos) | np.isnan(datos), 999999, datos)
     return matriz_limpia.tolist()
 
 

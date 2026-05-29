@@ -2,7 +2,7 @@
 
 import numpy as np
 
-SIN_CONEXION = 999
+SIN_CONEXION = 999999
 
 
 def aplicar_floyd_warshall(matriz_distancias, sin_conexion=SIN_CONEXION):

@@ -2,6 +2,8 @@
 
 Aplicacion cliente-servidor en Python para cotizar envios entre municipios de Guatemala usando Floyd-Warshall, Flask, Tkinter, Matplotlib y NetworkX.
 
+Departamentos elegidos: Guatemala, Sacatepequez y Chimaltenango. El algoritmo de Dijkstra se omite por indicacion del catedratico; el calculo de rutas minimas se realiza con Floyd-Warshall.
+
 Para exponer el proyecto, revisar:
 
 - `docs/GUIA_EXPOSICION.md`: guia de funcionamiento por archivo.

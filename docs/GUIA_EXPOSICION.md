@@ -4,6 +4,8 @@
 
 El sistema simula una empresa de transporte que tiene agencias en cabeceras municipales. El empleado selecciona origen, destino y peso del paquete. La API calcula la ruta mas corta con Floyd-Warshall y el cliente muestra kilometros, ruta, costos y precio final.
 
+Departamentos elegidos: Guatemala, Sacatepequez y Chimaltenango. Dijkstra se omite por indicacion del catedratico, por lo que la explicacion del algoritmo se centra en Floyd-Warshall.
+
 ## Capas del proyecto
 
 ```text
@@ -57,7 +59,7 @@ Administrador -> Ver Matriz Floyd
 
 ## Grafo no dirigido
 
-El visualizador usa `nx.Graph()` porque las carreteras entre municipios se interpretan como conexiones transitables en ambos sentidos.
+El visualizador usa `nx.Graph()` porque el catedratico indico que el grafo debe manejarse como no dirigido.
 
 La matriz del Excel es simetrica, por lo que la distancia de ida y vuelta entre dos municipios es la misma. Por esa razon, en pantalla se dibuja una sola arista entre cada par de municipios y no se muestran flechas.
 

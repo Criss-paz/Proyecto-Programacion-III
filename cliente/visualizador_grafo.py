@@ -4,7 +4,7 @@ import html, re, unicodedata, xml.etree.ElementTree as ET
 from pathlib import Path
 import numpy as np
 
-SIN_CONEXION = 999
+SIN_CONEXION = 999999
 _cache_posiciones = None
 RUTA_DRAWIO = Path(__file__).resolve().parent.parent / "datos" / "grafo.drawio"
 ALIAS_DRAWIO = {
