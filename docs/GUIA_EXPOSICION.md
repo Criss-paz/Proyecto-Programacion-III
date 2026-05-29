@@ -72,7 +72,7 @@ El peso no se envia a la API porque el cliente lo usa localmente para calcular e
 
 ## Grafo
 
-El grafo fue elaborado en `grafo.drawio`. Para mostrarlo en pantalla, `visualizador_grafo.py` crea un grafo con `nx.Graph()` y usa Matplotlib para dibujarlo.
+El grafo fue elaborado en `grafo.drawio`. Para mostrarlo en pantalla, `visualizador_grafo.py` crea un grafo no dirigido con `nx.Graph()` y usa Matplotlib para dibujarlo.
 
 El visualizador lee las posiciones del archivo Draw.io para que el mapa se parezca al grafo aprobado. La ruta mas corta se resalta en rojo y los demas nodos/aristas quedan en colores suaves.
 

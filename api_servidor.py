@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+import numpy as np
 import lector_excel
 import algoritmos
 
@@ -46,7 +47,7 @@ def calcular_ruta():
         ruta_exacta = algoritmos.obtener_ruta_minima(matriz_recorrido, municipios, idx_origen, idx_destino)
 
         # Si el resultado es 999, significa que físicamente no hay carreteras que conecten los puntos
-        if kilometros == 999:
+        if not np.isfinite(kilometros):
             return jsonify({"error": "No existe una ruta terrestre disponible entre estos municipios"}), 404
 
         # Estructuramos la respuesta de vuelta al cliente
