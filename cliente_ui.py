@@ -43,7 +43,11 @@ class AplicacionTransporte:
         try:
             peso = float(self.txt_peso.get())
             req = requests.post("http://127.0.0.1:5000/calcular_ruta", 
-                                json={"origen": self.cb_origen.get(), "destino": self.cb_destino.get()})
+                                json={
+                                    "origen": self.cb_origen.get(),
+                                    "destino": self.cb_destino.get(),
+                                    "peso": peso
+                                })
             datos = req.json()
             
             if "error" in datos:
@@ -51,9 +55,8 @@ class AplicacionTransporte:
                 return
                 
             km = datos["distancia_km"]
-            t = config_tarifas.obtener()
-            costo = t["COSTO_BASE"] + (t["COSTO_POR_KM"] * km) + (t["COSTO_POR_LIBRA"] * peso)
-            precio = costo * (1 + t["MARGEN_UTILIDAD"])
+            costo = datos["costo_empresa"]
+            precio = datos["precio_final"]
 
             texto = f"RUTA:\n{' -> '.join(datos['ruta_optima'])}\n\n"
             texto += f"Distancia: {km} km\nCosto Empresa: Q{costo:.2f}\n"
